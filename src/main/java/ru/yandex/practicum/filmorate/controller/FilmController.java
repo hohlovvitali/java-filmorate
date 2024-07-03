@@ -80,7 +80,7 @@ public class FilmController {
         if (films.containsKey(newFilm.getId())) {
             Film oldFilm = films.get(newFilm.getId());
 
-            if (newFilm.getName() != null && !newFilm.getName().isBlank()){
+            if (newFilm.getName() != null && !newFilm.getName().isBlank()) {
                 if (checkDuplicateFilmName(newFilm.getName()) && !oldFilm.getName().equals(newFilm.getName())) {
                     log.warn("Имя для обновленного фильма {} уже занято", newFilm.getName());
                     throw new DuplicatedDataException("Это имя уже используется");
