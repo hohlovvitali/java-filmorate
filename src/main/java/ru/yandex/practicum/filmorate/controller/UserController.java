@@ -80,7 +80,7 @@ public class UserController {
         if (users.containsKey(newUser.getId())) {
             User oldUser = users.get(newUser.getId());
 
-            if (newUser.getEmail() !=null && !newUser.getEmail().isBlank()){
+            if (newUser.getEmail() != null && !newUser.getEmail().isBlank()) {
                 if (!newUser.getEmail().contains("@")) {
                     log.warn("Новый E-mail не содержит знак @: {}", newUser.getEmail());
                     throw new ValidationException("E-mail должен содержать знак @");
