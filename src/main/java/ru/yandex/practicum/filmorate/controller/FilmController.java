@@ -18,7 +18,7 @@ import java.util.Map;
 @RequestMapping("/films")
 public class FilmController {
     private final Map<Long, Film> films = new HashMap<>();
-    @JsonFormat(pattern="yyyy-MM-dd")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private static LocalDate RELEASE_DATE_MIN = LocalDate.parse("1895-12-28");
     private static final Logger log = LoggerFactory.getLogger(FilmController.class);
 
