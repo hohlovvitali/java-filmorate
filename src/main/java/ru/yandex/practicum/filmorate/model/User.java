@@ -6,16 +6,13 @@ import lombok.Data;
 
 import java.time.LocalDate;
 
-/**
- * Film.
- */
 @Data
 @Builder
-public class Film {
+public class User {
     private Long id;
+    private String email;
+    private String login;
     private String name;
-    private String description;
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate releaseDate;
-    private Integer duration;
+    private LocalDate birthday;
 }
