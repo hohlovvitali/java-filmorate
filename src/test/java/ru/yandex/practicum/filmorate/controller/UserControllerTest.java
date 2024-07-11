@@ -8,6 +8,8 @@ import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.UserService;
+import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -20,7 +22,7 @@ class UserControllerTest {
 
     @BeforeEach
     public void beforeEach() {
-        userController = new UserController();
+        userController = new UserController(new UserService(new InMemoryUserStorage()));
     }
 
     @Test
@@ -340,6 +342,170 @@ class UserControllerTest {
         );
 
         Assertions.assertEquals("Этот e-mail уже используется", ex.getMessage());
+    }
+
+    @Test
+    void addFriendTest() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user1);
+
+        User user2 = User.builder()
+                .email("user2@.com")
+                .login("user2login")
+                .name("user2")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user2);
+
+        userController.addFriend(user1.getId(), user2.getId());
+        Collection<User> usersFriends = userController.getFriends(user1.getId());
+
+        assertNotNull(usersFriends, "Список друзей не возращается");
+        assertEquals(1, usersFriends.size(), "Неверный размер возращаемого списка");
+        assertEquals(user2.getId(), usersFriends.stream().toList().getFirst().getId(), "Возращается неправильный id друга");
+
+        usersFriends = userController.getFriends(user2.getId());
+
+        assertNotNull(usersFriends, "Список друзей не возращается");
+        assertEquals(1, usersFriends.size(), "Неверный размер возращаемого списка");
+        assertEquals(user1.getId(), usersFriends.stream().toList().getFirst().getId(), "Возращается неправильный id друга");
+    }
+
+    @Test
+    void addFriendWithNonExistentId() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user1);
+
+        User user2 = User.builder()
+                .email("user2@.com")
+                .login("user2login")
+                .name("user2")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user2);
+
+        NotFoundException ex = Assertions.assertThrows(
+                NotFoundException.class,
+                generateAddFriendException(user1.getId(), 3L)
+        );
+
+        Assertions.assertEquals("Пользователь с id = 3 не найден", ex.getMessage());
+    }
+
+    @Test
+    void addFriendWitIdLess0() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user1);
+
+        ValidationException ex = Assertions.assertThrows(
+                ValidationException.class,
+                generateAddFriendException(user1.getId(), -1L)
+        );
+
+        Assertions.assertEquals("Id должен быть больше 0", ex.getMessage());
+    }
+
+    @Test
+    void addFriendWitIdNull() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user1);
+
+        ValidationException ex = Assertions.assertThrows(
+                ValidationException.class,
+                generateAddFriendException(user1.getId(), null)
+        );
+
+        Assertions.assertEquals("Id должен быть указан", ex.getMessage());
+    }
+
+    @Test
+    void getCommonFriendTest() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user1);
+
+        User user2 = User.builder()
+                .email("user2@.com")
+                .login("user2login")
+                .name("user2")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user2);
+
+        User user3 = User.builder()
+                .email("user3@.com")
+                .login("user3login")
+                .name("user3")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user3);
+
+        userController.addFriend(user1.getId(), user2.getId());
+        userController.addFriend(user3.getId(), user2.getId());
+        Collection<User> usersFriends = userController.getCommonFriends(user1.getId(), user3.getId());
+
+        assertNotNull(usersFriends, "Список общих друзей не возращается");
+        assertEquals(1, usersFriends.size(), "Неверный размер возращаемого списка");
+        assertEquals(user2.getId(), usersFriends.stream().toList().getFirst().getId(), "Возращается неправильный id общего друга");
+    }
+
+    @Test
+    void deleteFriendTest() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user1);
+
+        User user2 = User.builder()
+                .email("user2@.com")
+                .login("user2login")
+                .name("user2")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+        userController.create(user2);
+
+        userController.addFriend(user1.getId(), user2.getId());
+        userController.deleteFriend(user1.getId(), user2.getId());
+        Collection<User> usersFriends = userController.getFriends(user1.getId());
+
+        assertNotNull(usersFriends, "Список друзей не возращается");
+        assertEquals(0, usersFriends.size(), "Неверный размер возращаемого списка");
+
+        usersFriends = userController.getFriends(user2.getId());
+
+        assertNotNull(usersFriends, "Список друзей не возращается");
+        assertEquals(0, usersFriends.size(), "Неверный размер возращаемого списка");
+    }
+
+    private Executable generateAddFriendException(Long userId, Long friendId) {
+        return () -> userController.addFriend(userId, friendId);
     }
 
     private Executable generateCreateException(User user) {

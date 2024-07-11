@@ -8,19 +8,27 @@ import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.storage.film.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class FilmControllerTest {
     FilmController filmController;
+    UserStorage userStorageTest;
 
     @BeforeEach
     public void beforeEach() {
-        filmController = new FilmController();
+        userStorageTest = new InMemoryUserStorage();
+        filmController = new FilmController(new FilmService(new InMemoryFilmStorage(), userStorageTest));
     }
 
     @Test
@@ -314,6 +322,240 @@ class FilmControllerTest {
         );
 
         Assertions.assertEquals("Это имя уже используется", ex.getMessage());
+    }
+
+    @Test
+    public void testAddLike() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+
+        userStorageTest.create(user1);
+
+        Film film1 = Film.builder()
+                .name("Film 1")
+                .description("Film 1 description")
+                .releaseDate(LocalDate.parse("2000-01-01"))
+                .duration(100)
+                .build();
+
+        filmController.create(film1);
+        filmController.addLike(1L, 1L);
+
+        Collection<Film> filmCollection = filmController.findAll();
+        assertNotNull(filmCollection, "Список фильмов не возращается");
+        assertEquals(1, filmCollection.size(), "Неверный размер возращаемого списка");
+        assertEquals(user1.getId(), filmCollection.stream().toList().getFirst().getUserLikesIdSet().stream().toList().getFirst(),
+                "Возращается неправильный id пользователя, который поставил лайк");
+    }
+
+    @Test
+    public void testAddLikeWithIncorrectId() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+
+        userStorageTest.create(user1);
+
+        Film film1 = Film.builder()
+                .name("Film 1")
+                .description("Film 1 description")
+                .releaseDate(LocalDate.parse("2000-01-01"))
+                .duration(100)
+                .build();
+
+        filmController.create(film1);
+        NotFoundException exFilm = Assertions.assertThrows(
+                NotFoundException.class,
+                generateAddLikeException(2L, user1.getId())
+        );
+
+        Assertions.assertEquals("Фильм с id = 2 не найден", exFilm.getMessage());
+
+        NotFoundException exUser = Assertions.assertThrows(
+                NotFoundException.class,
+                generateAddLikeException(film1.getId(), 2L)
+        );
+
+        Assertions.assertEquals("Пользователь с id = 2 не найден", exUser.getMessage());
+    }
+
+    @Test
+    public void testAddLikeWithIdLess1() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+
+        userStorageTest.create(user1);
+
+        Film film1 = Film.builder()
+                .name("Film 1")
+                .description("Film 1 description")
+                .releaseDate(LocalDate.parse("2000-01-01"))
+                .duration(100)
+                .build();
+
+        filmController.create(film1);
+        ValidationException exFilm = Assertions.assertThrows(
+                ValidationException.class,
+                generateAddLikeException(0L, user1.getId())
+        );
+
+        Assertions.assertEquals("Id должен быть больше 0", exFilm.getMessage());
+    }
+
+    @Test
+    public void testAddLikeWithIdNull() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+
+        userStorageTest.create(user1);
+
+        Film film1 = Film.builder()
+                .name("Film 1")
+                .description("Film 1 description")
+                .releaseDate(LocalDate.parse("2000-01-01"))
+                .duration(100)
+                .build();
+
+        filmController.create(film1);
+        ValidationException exFilm = Assertions.assertThrows(
+                ValidationException.class,
+                generateAddLikeException(null, user1.getId())
+        );
+
+        Assertions.assertEquals("Id должен быть указан", exFilm.getMessage());
+    }
+
+    @Test
+    public void testDeleteLike() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+
+        userStorageTest.create(user1);
+
+        Film film1 = Film.builder()
+                .name("Film 1")
+                .description("Film 1 description")
+                .releaseDate(LocalDate.parse("2000-01-01"))
+                .duration(100)
+                .build();
+
+        filmController.create(film1);
+        filmController.addLike(1L, 1L);
+        filmController.deleteLike(1L, 1L);
+
+        Collection<Film> filmCollection = filmController.findAll();
+        assertNotNull(filmCollection, "Список фильмов не возращается");
+        assertEquals(1, filmCollection.size(), "Неверный размер возращаемого списка");
+        assertEquals(0, filmCollection.stream().toList().getFirst().getUserLikesIdSet().size(),
+                "Не удаляется лайк пользователя");
+    }
+
+    @Test
+    public void testFilmRate() {
+        User user1 = User.builder()
+                .email("user1@.com")
+                .login("user1login")
+                .name("user1")
+                .birthday(LocalDate.parse("2000-01-01"))
+                .build();
+
+        userStorageTest.create(user1);
+
+        Film film1 = Film.builder()
+                .name("Film 1")
+                .description("Film 1 description")
+                .releaseDate(LocalDate.parse("2000-01-01"))
+                .duration(100)
+                .build();
+        filmController.create(film1);
+
+        Film film2 = Film.builder()
+                .name("Film 2")
+                .description("Film 2 description")
+                .releaseDate(LocalDate.parse("2000-01-01"))
+                .duration(100)
+                .build();
+        filmController.create(film2);
+
+        Film film3 = Film.builder()
+                .name("Film 3")
+                .description("Film 3 description")
+                .releaseDate(LocalDate.parse("2000-01-01"))
+                .duration(100)
+                .build();
+
+        filmController.create(film3);
+
+        filmController.addLike(film3.getId(), user1.getId());
+
+        Collection<Film> filmRate = filmController.getPopularFilms(5);
+        List<Film> filmList = List.of(film3, film1, film2);
+        assertNotNull(filmRate, "Список фильмов не возращается");
+        assertEquals(3, filmRate.size(), "Неверный размер возращаемого списка");
+        assertEquals(filmList, filmRate.stream().toList(), "Не удаляется лайк пользователя");
+    }
+
+    @Test
+    public void testFilmRateWithCount0() {
+        Film film1 = Film.builder()
+                .name("Film 1")
+                .description("Film 1 description")
+                .releaseDate(LocalDate.parse("2000-01-01"))
+                .duration(100)
+                .build();
+        filmController.create(film1);
+
+        ValidationException exFilm = Assertions.assertThrows(
+                ValidationException.class,
+                generateFilmRateException(0)
+        );
+
+        Assertions.assertEquals("Количество выводимых фильмов должно быть больше 0", exFilm.getMessage());
+    }
+
+    @Test
+    public void testFilmRateWithCountLess0() {
+        Film film1 = Film.builder()
+                .name("Film 1")
+                .description("Film 1 description")
+                .releaseDate(LocalDate.parse("2000-01-01"))
+                .duration(100)
+                .build();
+        filmController.create(film1);
+
+        ValidationException exFilm = Assertions.assertThrows(
+                ValidationException.class,
+                generateFilmRateException(-1)
+        );
+
+        Assertions.assertEquals("Количество выводимых фильмов должно быть больше 0", exFilm.getMessage());
+    }
+
+    private Executable generateFilmRateException(Integer count) {
+        return () -> filmController.getPopularFilms(count);
+    }
+
+    private Executable generateAddLikeException(Long id, Long userId) {
+        return () -> filmController.addLike(id, userId);
     }
 
     private Executable generateCreateException(Film film) {
