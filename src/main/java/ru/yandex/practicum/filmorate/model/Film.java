@@ -5,10 +5,10 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 
-/**
- * Film.
- */
 @Data
 @Builder
 public class Film {
@@ -18,4 +18,12 @@ public class Film {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate releaseDate;
     private Integer duration;
+    @Builder.Default
+    private Set<Long> userLikesIdSet = Collections.emptySet();
+    private List<Genre> genres = Collections.emptyList();
+    private Rating mpa;
+
+    public void addLike(Long id) {
+        this.userLikesIdSet.add(id);
+    }
 }
