@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.storage.user;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
@@ -12,6 +13,7 @@ import java.time.LocalDate;
 import java.util.*;
 
 @Component
+@Qualifier("InMemoryUserStorage")
 public class InMemoryUserStorage implements UserStorage {
     private final Map<Long, User> users = new HashMap<>();
     private static final Logger log = LoggerFactory.getLogger(InMemoryUserStorage.class);
@@ -60,7 +62,6 @@ public class InMemoryUserStorage implements UserStorage {
         return user;
     }
 
-    @Override
     public void addFriendToUser(Long idUser, Long idFriend) {
         checkUserById(idUser);
 
@@ -70,7 +71,6 @@ public class InMemoryUserStorage implements UserStorage {
         this.getUserById(idUser).addFriend(idFriend);
     }
 
-    @Override
     public void deleteFriendFromUser(Long idUser, Long idFriend) {
         checkUserById(idUser);
 
@@ -140,7 +140,6 @@ public class InMemoryUserStorage implements UserStorage {
         throw new NotFoundException("Пользователь с id = " + newUser.getId() + " не найден");
     }
 
-    @Override
     public Collection<User> getFriends(Long userId) {
         checkUserById(userId);
 

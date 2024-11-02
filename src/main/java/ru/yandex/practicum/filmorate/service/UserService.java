@@ -2,25 +2,26 @@ package ru.yandex.practicum.filmorate.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.controller.FilmController;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.friend.FriendStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.Collection;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class UserService {
 
     private final UserStorage userStorage;
+    private final FriendStorage friendStorage;
     private static final Logger log = LoggerFactory.getLogger(FilmController.class);
 
-    @Autowired
-    public UserService(UserStorage userStorage) {
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage, FriendStorage friendStorage) {
         this.userStorage = userStorage;
+        this.friendStorage = friendStorage;
     }
 
     public Collection<User> findAll() {
@@ -40,21 +41,22 @@ public class UserService {
 
     public Collection<User> getFriends(Long userId) {
         log.info("Вывод списка всех друзей пользователя c id={}", userId);
-        return userStorage.getFriends(userId);
+        checkUserId(userId);
+        return friendStorage.findAllFriends(userId);
     }
 
     public void addFriend(Long userId, Long friendId) {
         log.info("Добавление друга c id={} пользователю с id={}", friendId, userId);
-        userStorage.addFriendToUser(userId, friendId);
-        log.info("Ответное добавление друга c id={} пользователю с id={}", userId, friendId);
-        userStorage.addFriendToUser(friendId, userId);
+        checkUserId(userId);
+        checkUserId(friendId);
+        friendStorage.addFriend(userId, friendId);
     }
 
     public void deleteFriend(Long userId, Long friendId) {
         log.info("Удаление пользователем с id={} из списка друзей пользователя с id={}", userId, friendId);
-        userStorage.deleteFriendFromUser(userId, friendId);
-        log.info("Ответное удаление пользователем с id={} из списка друзей пользователя с id={}", friendId, userId);
-        userStorage.deleteFriendFromUser(friendId, userId);
+        checkUserId(userId);
+        checkUserId(friendId);
+        friendStorage.removeFriend(userId, friendId);
     }
 
     public void deleteUser(Long id) {
@@ -64,16 +66,17 @@ public class UserService {
 
     public Collection<User> getCommonFriends(Long userId, Long otherId) {
         log.info("Вывод списка общих друзей пользователя с id={} и пользователя с id={}", userId, otherId);
-        Set<Long> userIdFriend = userStorage.getUserById(userId).getFriendsIdSet();
-        Set<Long> otherIdFriend = userStorage.getUserById(otherId).getFriendsIdSet();
+        checkUserId(userId);
+        checkUserId(otherId);
+        return friendStorage.findCommonFriends(userId, otherId);
+    }
 
-        Set<Long> commonFriendsId = userIdFriend.stream()
-                .distinct()
-                .filter(otherIdFriend::contains)
-                .collect(Collectors.toSet());
-
-        return commonFriendsId.stream()
-                .map(userStorage::getUserById)
-                .collect(Collectors.toSet());
+    private void checkUserId(Long userId) {
+        try {
+            userStorage.getUserById(userId);
+        } catch (NotFoundException e) {
+            log.warn("Пользователь с id = {} не найден", userId);
+            throw new NotFoundException("User not found");
+        }
     }
 }

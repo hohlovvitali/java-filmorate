@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.storage.film;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
@@ -14,11 +15,19 @@ import java.time.LocalDate;
 import java.util.*;
 
 @Component
+@Qualifier("InMemoryFilmStorage")
 public class InMemoryFilmStorage implements FilmStorage {
     private final Map<Long, Film> films = new HashMap<>();
     @JsonFormat(pattern = "yyyy-MM-dd")
     private static LocalDate RELEASE_DATE_MIN = LocalDate.parse("1895-12-28");
     private static final Logger log = LoggerFactory.getLogger(FilmController.class);
+    private final Comparator<Film> filmComparator = (film1, film2) -> {
+        if (film1.getUserLikesIdSet().size() != film2.getUserLikesIdSet().size()) {
+            return Integer.compare(film2.getUserLikesIdSet().size(), film1.getUserLikesIdSet().size());
+        }
+
+        return Long.compare(film1.getId(), film2.getId());
+    };
 
     @Override
     public Collection<Film> findAll() {
@@ -136,12 +145,26 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
+    public Collection<Film> getPopularFilms(Integer count) {
+        if (count <= 0) {
+            log.warn("Количество выводимых фильмов должно быть больше 0: {}", count);
+            throw new ValidationException("Количество выводимых фильмов должно быть больше 0");
+        }
+
+        if (count > this.findAll().size()) {
+            log.debug("Количество выводимых фильмов {} больше общего количества {}. Выводятся все фильмы", count, this.findAll().size());
+            count = this.findAll().size();
+        }
+
+        return this.findAll().stream().sorted(filmComparator).limit(count).toList();
+
+    }
+
     public void addLikeToFilm(Long filmId, Long userId) {
         checkFilmById(filmId);
         this.getFilmById(filmId).addLike(userId);
     }
 
-    @Override
     public void deleteLikeFromFilm(Long filmId, Long userId) {
         checkFilmById(filmId);
         this.getFilmById(filmId).getUserLikesIdSet().remove(userId);
