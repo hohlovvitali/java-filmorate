@@ -153,8 +153,8 @@ public class FilmDbStorage implements FilmStorage {
 
     private void checkGenre(int genre_id) {
         List<Genre> genreList = genreStorage.findAllGenres();
-        for (Genre Genre : genreList) {
-            if (Genre.getId() == genre_id) {
+        for (Genre genre : genreList) {
+            if (genre.getId() == genre_id) {
                 return;
             }
         }
