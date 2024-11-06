@@ -7,7 +7,7 @@ import java.util.Collection;
 public interface UserStorage {
     User create(User user);
 
-    void delete(Long id);
+    void deleteUserById(Long id);
 
     User update(User user);
 

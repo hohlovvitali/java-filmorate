@@ -59,9 +59,15 @@ public class UserService {
         friendStorage.removeFriend(userId, friendId);
     }
 
-    public void deleteUser(Long id) {
-        log.info("Удаление пользователем с id={}", id);
-        userStorage.delete(id);
+    public User getUserById(Long userId) {
+        log.info("Вывод пользователя c id={}", userId);
+        return userStorage.getUserById(userId);
+    }
+
+    public void deleteUserById(Long userId) {
+        log.info("Удаление пользователя с id={} ", userId);
+        checkUserId(userId);
+        userStorage.deleteUserById(userId);
     }
 
     public Collection<User> getCommonFriends(Long userId, Long otherId) {
