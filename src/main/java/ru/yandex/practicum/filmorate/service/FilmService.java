@@ -1,30 +1,35 @@
 package ru.yandex.practicum.filmorate.service;
 
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
+import ru.yandex.practicum.filmorate.storage.like.LikeStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.*;
 
 @Service
-@RequiredArgsConstructor
 public class FilmService {
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
+    private final LikeStorage likeStorage;
+    private final GenreStorage genreStorage;
     private static final Logger log = LoggerFactory.getLogger(FilmController.class);
-    private final Comparator<Film> filmComparator = (film1, film2) -> {
-        if (film1.getUserLikesIdSet().size() != film2.getUserLikesIdSet().size()) {
-            return Integer.compare(film2.getUserLikesIdSet().size(), film1.getUserLikesIdSet().size());
-        }
 
-        return Long.compare(film1.getId(), film2.getId());
-    };
+    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
+                       @Qualifier("userDbStorage") UserStorage userStorage,
+                       LikeStorage likeStorage, GenreStorage genreStorage) {
+        this.filmStorage = filmStorage;
+        this.userStorage = userStorage;
+        this.likeStorage = likeStorage;
+        this.genreStorage = genreStorage;
+    }
 
     public Collection<Film> findAll() {
         log.trace("Вывод списка всех фильмов");
@@ -34,6 +39,13 @@ public class FilmService {
     public Film create(Film film) {
         log.trace("Добавление нового фильма");
         return filmStorage.create(film);
+    }
+
+    public Film getFilmById(Long id) {
+        log.trace("Получение фильма с id = {}", id);
+        Film film = filmStorage.getFilmById(id);
+        film.setGenres(genreStorage.findAllGenresByFilm(id));
+        return film;
     }
 
     public Film update(Film newFilm) {
@@ -50,7 +62,7 @@ public class FilmService {
 
         userStorage.getUserById(userId);
 
-        filmStorage.addLikeToFilm(filmId, userId);
+        likeStorage.addLike(filmId, userId);
     }
 
     public void deleteLike(Long filmId, Long userId) {
@@ -62,21 +74,11 @@ public class FilmService {
 
         userStorage.getUserById(userId);
 
-        filmStorage.deleteLikeFromFilm(filmId, userId);
+        likeStorage.removeLike(filmId, userId);
     }
 
     public Collection<Film> getPopularFilms(Integer count) {
         log.info("Вывод первыx {} популярных фильмов ", count);
-        if (count <= 0) {
-            log.warn("Количество выводимых фильмов должно быть больше 0: {}", count);
-            throw new ValidationException("Количество выводимых фильмов должно быть больше 0");
-        }
-
-        if (count > filmStorage.findAll().size()) {
-            log.debug("Количество выводимых фильмов {} больше общего количества {}. Выводятся все фильмы", count, filmStorage.findAll().size());
-            count = filmStorage.findAll().size();
-        }
-
-        return filmStorage.findAll().stream().sorted(filmComparator).limit(count).toList();
+        return filmStorage.getPopularFilms(count);
     }
 }

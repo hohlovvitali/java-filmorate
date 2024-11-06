@@ -1,518 +1,134 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
+import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.function.Executable;
-import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
+import ru.yandex.practicum.filmorate.dao.UserDbStorage;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.service.UserService;
-import ru.yandex.practicum.filmorate.storage.user.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.friend.FriendStorage;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.*;
 
+import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-class UserControllerTest {
-    private UserController userController;
+@SpringBootTest
+@AutoConfigureTestDatabase
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
+public class UserControllerTest {
+    private final UserDbStorage userDbStorage;
+    private final FriendStorage friendStorage;
 
-    @BeforeEach
-    public void beforeEach() {
-        userController = new UserController(new UserService(new InMemoryUserStorage()));
+    @Test
+    public void testFindUserById() {
+        User validUser1 = getValidUser1();
+        userDbStorage.create(validUser1);
+
+        Optional<User> userOptional = Optional.ofNullable(userDbStorage.getUserById(1L));
+        assertThat(userOptional)
+                .isPresent()
+                .hasValueSatisfying(user ->
+                        assertThat(user).hasFieldOrPropertyWithValue("id", 1L)
+                );
     }
 
     @Test
-    void findAll() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
+    public void testFindUnknownIdUser() {
+        User validUser = getValidUser1();
+        userDbStorage.create(validUser);
+        User invalidUser = User.builder()
+                .id(5L)
+                .login("user2Login")
+                .name("user2Name")
+                .email("user2@mail")
+                .birthday(LocalDate.parse("1997-10-20"))
                 .build();
-
-        User user2 = User.builder()
-                .email("user2@.com")
-                .login("user2login")
-                .name("user2")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        userController.create(user1);
-        userController.create(user2);
-
-        Collection<User> usersCollectionFromMethod = userController.findAll();
-        Collection<User> usersCollection = new ArrayList<>();
-        usersCollection.add(user1);
-        usersCollection.add(user2);
-
-        assertNotNull(usersCollectionFromMethod, "Список пользователей не возращается");
-        assertEquals(2, usersCollectionFromMethod.size(), "Неверный размер возращаемого списка");
-        assertEquals(usersCollection, usersCollectionFromMethod.stream().toList(), "Возращается не тот список");
-    }
-
-    @Test
-    void createTest() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        userController.create(user1);
-
-        Collection<User> usersCollectionFromMethod = userController.findAll();
-
-        assertNotNull(usersCollectionFromMethod, "Список фильмов не возращается");
-        assertEquals(1, usersCollectionFromMethod.size(), "Неверный размер возращаемого списка");
-        assertEquals(user1, usersCollectionFromMethod.stream().toList().getFirst(), "Возращается не того пользователя");
-    }
-
-    @Test
-    void createWithEmptyEmail() {
-        User user1 = User.builder()
-                .email("")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        ValidationException ex = Assertions.assertThrows(
-                ValidationException.class,
-                generateCreateException(user1)
+        NotFoundException thrown = assertThrows(NotFoundException.class,
+                () -> userDbStorage.getUserById(invalidUser.getId())
         );
-
-        Assertions.assertEquals("E-mail должен быть указан", ex.getMessage());
+        assertEquals("User not found", thrown.getMessage());
     }
 
     @Test
-    void createUsersWithoutEmailSymbols() {
-        User user1 = User.builder()
-                .email("user1.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
+    public void testFindAllUsers() {
+        User validUser1 = userDbStorage.create(getValidUser1());
+        User validUser2 = userDbStorage.create(getValidUser2());
 
-        ValidationException ex = Assertions.assertThrows(
-                ValidationException.class,
-                generateCreateException(user1)
-        );
-
-        Assertions.assertEquals("E-mail должен содержать знак @", ex.getMessage());
+        List<User> users = userDbStorage.findAll().stream().toList();
+        assertThat(users)
+                .contains(validUser1, validUser2);
     }
 
     @Test
-    void createUsersWithDuplicateEmail() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
+    public void testUpdateUser() {
+        User validUser1 = getValidUser1();
+        User validUser2 = getValidUser2();
+        validUser2.setId(1L);
+        userDbStorage.create(validUser1);
+        userDbStorage.update(validUser2);
 
-        User user2 = User.builder()
-                .email("user1@.com")
-                .login("user2login")
-                .name("user2")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        userController.create(user1);
-
-        DuplicatedDataException ex = Assertions.assertThrows(
-                DuplicatedDataException.class,
-                generateCreateException(user2)
-        );
-
-        Assertions.assertEquals("E-mail уже используется", ex.getMessage());
+        User user = userDbStorage.getUserById(1L);
+        assertThat(user)
+                .hasFieldOrPropertyWithValue("id", 1L)
+                .hasFieldOrPropertyWithValue("login", "user2Login");
     }
 
     @Test
-    void createWithEmptyLogin() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
+    public void testCreateUser() {
+        User validUser1 = userDbStorage.create(getValidUser1());
 
-        ValidationException ex = Assertions.assertThrows(
-                ValidationException.class,
-                generateCreateException(user1)
-        );
-
-        Assertions.assertEquals("Логин должен быть указан и не содержать пробелы", ex.getMessage());
+        User user = userDbStorage.getUserById(1L);
+        assertThat(user)
+                .isNotNull()
+                .isEqualTo(validUser1);
     }
 
     @Test
-    void createLoginWithSpace() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1 login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
+    public void testAddFriends() {
+        User validUser1 = userDbStorage.create(getValidUser1());
+        User validUser2 = userDbStorage.create(getValidUser2());
 
-        ValidationException ex = Assertions.assertThrows(
-                ValidationException.class,
-                generateCreateException(user1)
-        );
+        friendStorage.addFriend(validUser1.getId(), validUser2.getId());
 
-        Assertions.assertEquals("Логин должен быть указан и не содержать пробелы", ex.getMessage());
+        List<User> friends = friendStorage.findAllFriends(validUser1.getId());
+        assertThat(friends)
+                .isNotEmpty()
+                .contains(validUser2);
     }
 
     @Test
-    void createUserWithFutureBirthday() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2100-01-01"))
-                .build();
+    public void testDeleteFromFriends() {
+        User validUser1 = userDbStorage.create(getValidUser1());
+        User validUser2 = userDbStorage.create(getValidUser2());
 
-        ValidationException ex = Assertions.assertThrows(
-                ValidationException.class,
-                generateCreateException(user1)
-        );
-
-        Assertions.assertEquals("Дата рождения не может быть в будущем", ex.getMessage());
+        friendStorage.addFriend(validUser1.getId(), validUser2.getId());
+        friendStorage.removeFriend(validUser1.getId(), validUser2.getId());
+        List<User> friends = friendStorage.findAllFriends(validUser1.getId());
+        assertThat(friends)
+                .isEmpty();
     }
 
-    @Test
-    void createUserWithNowBirthday() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.now())
+    private User getValidUser1() {
+        return User.builder()
+                .login("user1Login")
+                .name("user1Name")
+                .email("user1@mail")
+                .birthday(LocalDate.parse("1997-07-08"))
                 .build();
-
-        userController.create(user1);
-
-        Collection<User> usersCollectionFromMethod = userController.findAll();
-
-        assertNotNull(usersCollectionFromMethod, "Список фильмов не возращается");
-        assertEquals(1, usersCollectionFromMethod.size(), "Неверный размер возращаемого списка");
-        assertEquals(user1.getBirthday(), LocalDate.now(), "Возращается не та дата рождения");
     }
 
-    @Test
-    void createUserWithEmptyName() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .birthday(LocalDate.now())
+    private User getValidUser2() {
+        return User.builder()
+                .login("user2Login")
+                .name("user2Name")
+                .email("user2@mail")
+                .birthday(LocalDate.parse("1997-10-20"))
                 .build();
-
-        userController.create(user1);
-
-        Collection<User> usersCollectionFromMethod = userController.findAll();
-
-        assertNotNull(usersCollectionFromMethod, "Список фильмов не возращается");
-        assertEquals(1, usersCollectionFromMethod.size(), "Неверный размер возращаемого списка");
-        assertEquals(user1.getLogin(), usersCollectionFromMethod.stream().toList().getFirst().getName(), "Имя неверно заполняется логином");
-    }
-
-    @Test
-    void updateTest() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        userController.create(user1);
-
-        User userNew = User.builder()
-                .id(1L)
-                .email("user1new@.com")
-                .login("user1loginNew")
-                .name("user1new")
-                .birthday(LocalDate.parse("2000-01-12"))
-                .build();
-        userController.update(userNew);
-
-        Collection<User> usersCollectionFromMethod = userController.findAll();
-
-        assertNotNull(usersCollectionFromMethod, "Список фильмов не возращается");
-        assertEquals(1, usersCollectionFromMethod.size(), "Неверный размер возращаемого списка");
-        assertEquals(userNew, usersCollectionFromMethod.stream().toList().getFirst(), "Возращается неправильно обновленный пользователь");
-    }
-
-    @Test
-    void updateWithEmptyId() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        ValidationException ex = Assertions.assertThrows(
-                ValidationException.class,
-                generateUpdateException(user1)
-        );
-
-        Assertions.assertEquals("Id должен быть указан", ex.getMessage());
-    }
-
-    @Test
-    void updateWithNonExistentId() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        userController.create(user1);
-        user1.setId(5L);
-
-        NotFoundException ex = Assertions.assertThrows(
-                NotFoundException.class,
-                generateUpdateException(user1)
-        );
-
-        Assertions.assertEquals("Пользователь с id = 5 не найден", ex.getMessage());
-    }
-
-    @Test
-    void updateEmailWithoutSymbol() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        userController.create(user1);
-
-        User userDuplicate = User.builder()
-                .id(1L)
-                .email("user1.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        ValidationException ex = Assertions.assertThrows(
-                ValidationException.class,
-                generateUpdateException(userDuplicate)
-        );
-
-        Assertions.assertEquals("E-mail должен содержать знак @", ex.getMessage());
-    }
-
-    @Test
-    void updateWithDuplicateUserEmail() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        User user2 = User.builder()
-                .email("user2@.com")
-                .login("user2login")
-                .name("user2")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        userController.create(user1);
-        userController.create(user2);
-
-        User userDuplicate = User.builder()
-                .id(1L)
-                .email("user2@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-
-        DuplicatedDataException ex = Assertions.assertThrows(
-                DuplicatedDataException.class,
-                generateUpdateException(userDuplicate)
-        );
-
-        Assertions.assertEquals("Этот e-mail уже используется", ex.getMessage());
-    }
-
-    @Test
-    void addFriendTest() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user1);
-
-        User user2 = User.builder()
-                .email("user2@.com")
-                .login("user2login")
-                .name("user2")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user2);
-
-        userController.addFriend(user1.getId(), user2.getId());
-        Collection<User> usersFriends = userController.getFriends(user1.getId());
-
-        assertNotNull(usersFriends, "Список друзей не возращается");
-        assertEquals(1, usersFriends.size(), "Неверный размер возращаемого списка");
-        assertEquals(user2.getId(), usersFriends.stream().toList().getFirst().getId(), "Возращается неправильный id друга");
-
-        usersFriends = userController.getFriends(user2.getId());
-
-        assertNotNull(usersFriends, "Список друзей не возращается");
-        assertEquals(1, usersFriends.size(), "Неверный размер возращаемого списка");
-        assertEquals(user1.getId(), usersFriends.stream().toList().getFirst().getId(), "Возращается неправильный id друга");
-    }
-
-    @Test
-    void addFriendWithNonExistentId() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user1);
-
-        User user2 = User.builder()
-                .email("user2@.com")
-                .login("user2login")
-                .name("user2")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user2);
-
-        NotFoundException ex = Assertions.assertThrows(
-                NotFoundException.class,
-                generateAddFriendException(user1.getId(), 3L)
-        );
-
-        Assertions.assertEquals("Пользователь с id = 3 не найден", ex.getMessage());
-    }
-
-    @Test
-    void addFriendWitIdLess0() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user1);
-
-        ValidationException ex = Assertions.assertThrows(
-                ValidationException.class,
-                generateAddFriendException(user1.getId(), -1L)
-        );
-
-        Assertions.assertEquals("Id должен быть больше 0", ex.getMessage());
-    }
-
-    @Test
-    void addFriendWitIdNull() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user1);
-
-        ValidationException ex = Assertions.assertThrows(
-                ValidationException.class,
-                generateAddFriendException(user1.getId(), null)
-        );
-
-        Assertions.assertEquals("Id должен быть указан", ex.getMessage());
-    }
-
-    @Test
-    void getCommonFriendTest() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user1);
-
-        User user2 = User.builder()
-                .email("user2@.com")
-                .login("user2login")
-                .name("user2")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user2);
-
-        User user3 = User.builder()
-                .email("user3@.com")
-                .login("user3login")
-                .name("user3")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user3);
-
-        userController.addFriend(user1.getId(), user2.getId());
-        userController.addFriend(user3.getId(), user2.getId());
-        Collection<User> usersFriends = userController.getCommonFriends(user1.getId(), user3.getId());
-
-        assertNotNull(usersFriends, "Список общих друзей не возращается");
-        assertEquals(1, usersFriends.size(), "Неверный размер возращаемого списка");
-        assertEquals(user2.getId(), usersFriends.stream().toList().getFirst().getId(), "Возращается неправильный id общего друга");
-    }
-
-    @Test
-    void deleteFriendTest() {
-        User user1 = User.builder()
-                .email("user1@.com")
-                .login("user1login")
-                .name("user1")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user1);
-
-        User user2 = User.builder()
-                .email("user2@.com")
-                .login("user2login")
-                .name("user2")
-                .birthday(LocalDate.parse("2000-01-01"))
-                .build();
-        userController.create(user2);
-
-        userController.addFriend(user1.getId(), user2.getId());
-        userController.deleteFriend(user1.getId(), user2.getId());
-        Collection<User> usersFriends = userController.getFriends(user1.getId());
-
-        assertNotNull(usersFriends, "Список друзей не возращается");
-        assertEquals(0, usersFriends.size(), "Неверный размер возращаемого списка");
-
-        usersFriends = userController.getFriends(user2.getId());
-
-        assertNotNull(usersFriends, "Список друзей не возращается");
-        assertEquals(0, usersFriends.size(), "Неверный размер возращаемого списка");
-    }
-
-    private Executable generateAddFriendException(Long userId, Long friendId) {
-        return () -> userController.addFriend(userId, friendId);
-    }
-
-    private Executable generateCreateException(User user) {
-        return () -> userController.create(user);
-    }
-
-    private Executable generateUpdateException(User user) {
-        return () -> userController.update(user);
     }
 }

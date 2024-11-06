@@ -1,6 +1,9 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Film;
@@ -12,6 +15,7 @@ import java.util.Collection;
 @RequiredArgsConstructor
 @RequestMapping("/films")
 public class FilmController {
+    private static final Logger log = LoggerFactory.getLogger(FilmController.class);
     private final FilmService filmService;
 
     @GetMapping
@@ -22,13 +26,13 @@ public class FilmController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Film create(@RequestBody Film film) {
+    public Film create(@Valid @RequestBody Film film) {
         return filmService.create(film);
     }
 
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public Film update(@RequestBody Film newFilm) {
+    public Film update(@Valid @RequestBody Film newFilm) {
         return filmService.update(newFilm);
     }
 
@@ -48,5 +52,11 @@ public class FilmController {
     @ResponseStatus(HttpStatus.OK)
     public Collection<Film> getPopularFilms(@RequestParam(defaultValue = "10") Integer count) {
         return filmService.getPopularFilms(count);
+    }
+
+    @GetMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public Film getFilmById(@PathVariable Long id) {
+        return filmService.getFilmById(id);
     }
 }
