@@ -12,7 +12,7 @@ import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
 import ru.yandex.practicum.filmorate.storage.like.LikeStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
-import java.util.*;
+import java.util.Collection;
 
 @Service
 public class FilmService {
@@ -77,8 +77,8 @@ public class FilmService {
         likeStorage.removeLike(filmId, userId);
     }
 
-    public Collection<Film> getPopularFilms(Integer count) {
-        log.info("Вывод первыx {} популярных фильмов ", count);
-        return filmStorage.getPopularFilms(count);
+    public Collection<Film> getPopularFilms(Integer count, Integer genreId, Integer year) {
+        log.info("Вывод первыx {} популярных фильмов жанра {}, в году {} ", count, genreId, year);
+        return filmStorage.getPopularFilms(count, genreId, year);
     }
 }
