@@ -81,4 +81,9 @@ public class FilmService {
         log.info("Вывод первыx {} популярных фильмов ", count);
         return filmStorage.getPopularFilms(count);
     }
+
+    public void deleteFilmById(Long filmId) {
+        log.trace("Удаление фильма id={}", filmId);
+        filmStorage.deleteFilmById(filmId);
+    }
 }
