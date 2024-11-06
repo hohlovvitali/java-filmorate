@@ -12,7 +12,11 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeSet;
 
 @Component
 @Qualifier("InMemoryFilmStorage")
@@ -145,7 +149,7 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public Collection<Film> getPopularFilms(Integer count) {
+    public Collection<Film> getPopularFilms(Integer count, Integer genreId, Integer year) {
         if (count <= 0) {
             log.warn("Количество выводимых фильмов должно быть больше 0: {}", count);
             throw new ValidationException("Количество выводимых фильмов должно быть больше 0");
