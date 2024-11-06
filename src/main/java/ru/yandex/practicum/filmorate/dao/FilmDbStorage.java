@@ -148,17 +148,28 @@ public class FilmDbStorage implements FilmStorage {
         return films;
     }
 
-    public Collection<Film> getPopularFilms(Integer count) {
-        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
+    public Collection<Film> getPopularFilms(Integer count, Integer genreId, Integer year) {
+        String sql = "SELECT f.*, r.rating_name " +
                 "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id " +
-                "LEFT JOIN films_Likes ON f.film_id = films_Likes.film_id " +
+                "LEFT JOIN films_Likes AS fl ON f.film_id = fl.film_id %s" +
                 "GROUP BY f.film_id " +
-                "ORDER BY COUNT(films_Likes.film_id) DESC " +
+                "ORDER BY COUNT(fl.film_id) DESC " +
                 "LIMIT ?";
-        // Добавлен вывод режиссеров
-        List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
+        List<Film> films = null;
+        if (Objects.nonNull(year) && Objects.nonNull(genreId)) {
+            sql = String.format(sql, "LEFT JOIN films_Genres AS fg ON f.film_id = fg.film_id WHERE fg.genre_id = ? AND YEAR(f.release_date) = ?");
+            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), genreId, year, count);
+        } else if (Objects.nonNull(genreId)) {
+            sql = String.format(sql, "LEFT JOIN films_Genres AS fg ON f.film_id = fg.film_id WHERE fg.genre_id = ?");
+            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), genreId, count);
+        } else if (Objects.nonNull(year)) {
+            sql = String.format(sql, "WHERE YEAR(f.release_date) = ?");
+            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), year, count);
+        } else {
+            sql = String.format(sql, "");
+            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
+        }
         addDirectorsToFilms(films);
-
         return films;
     }
 
