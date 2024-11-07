@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.EventOperation;
+import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
@@ -21,15 +23,17 @@ public class FilmService {
     private final UserStorage userStorage;
     private final LikeStorage likeStorage;
     private final GenreStorage genreStorage;
+    private final EventService eventService;
     private static final Logger log = LoggerFactory.getLogger(FilmController.class);
 
     public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
                        @Qualifier("userDbStorage") UserStorage userStorage,
-                       LikeStorage likeStorage, GenreStorage genreStorage) {
+                       LikeStorage likeStorage, GenreStorage genreStorage, EventService eventService) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
         this.likeStorage = likeStorage;
         this.genreStorage = genreStorage;
+        this.eventService = eventService;
     }
 
     public Collection<Film> findAll() {
@@ -64,6 +68,7 @@ public class FilmService {
         userStorage.getUserById(userId);
 
         likeStorage.addLike(filmId, userId);
+        eventService.addEvent(EventType.LIKE, EventOperation.ADD, userId, filmId);
     }
 
     public void deleteLike(Long filmId, Long userId) {
@@ -76,6 +81,7 @@ public class FilmService {
         userStorage.getUserById(userId);
 
         likeStorage.removeLike(filmId, userId);
+        eventService.addEvent(EventType.LIKE, EventOperation.REMOVE, userId, filmId);
     }
 
     public Collection<Film> getPopularFilms(Integer count, Integer genreId, Integer year) {
@@ -83,8 +89,13 @@ public class FilmService {
         return filmStorage.getPopularFilms(count, genreId, year);
     }
 
+    public void deleteFilmById(Long filmId) {
+        log.trace("Удаление фильма id={}", filmId);
+        filmStorage.deleteFilmById(filmId);
+    }
     public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
         log.info("Получение фильмов режиссера с id = {} и сортировкой по {}", directorId, sortBy);
         return filmStorage.getFilmsByDirector(directorId, sortBy);
     }
+
 }
