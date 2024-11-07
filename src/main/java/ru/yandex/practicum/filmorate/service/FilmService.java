@@ -97,5 +97,4 @@ public class FilmService {
         log.info("Получение фильмов режиссера с id = {} и сортировкой по {}", directorId, sortBy);
         return filmStorage.getFilmsByDirector(directorId, sortBy);
     }
-
 }
