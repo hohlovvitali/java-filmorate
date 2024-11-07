@@ -69,8 +69,6 @@ public class ReviewDbStorage {
         } catch (DuplicateKeyException exception) {
             throw new DuplicatedDataException("Пользователь с id = " + review.getUserId() + " уже оставил отзыв к " +
                     "фильму с id = " + review.getFilmId());
-        } catch (DataIntegrityViolationException exception) {
-            throw new NotFoundException("Пользователь или фильм не найден");
         }
     }
 

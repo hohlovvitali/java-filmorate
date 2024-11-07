@@ -32,6 +32,8 @@ public class ReviewService {
 
     public Review create(Review review) {
         log.info("Создаем новый отзыв");
+        filmStorage.getFilmById(review.getFilmId());
+        userStorage.getUserById(review.getUserId());
         return reviewDbStorage.create(review);
     }
 
