@@ -8,9 +8,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mappers.FilmMapper;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -48,6 +48,7 @@ public class FilmDbStorage implements FilmStorage {
                 "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id";
         // Добавлен вывод режиссеров
         List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum));
+        setFilmGenres(films);
         addDirectorsToFilms(films);
 
         return films;
@@ -103,18 +104,12 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public Film getFilmById(Long id) {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
-                "FROM films AS f " +
-                "JOIN ratings AS r ON f.rating_id = r.rating_id " +
-                "WHERE f.film_id = ?";
-
-        Film film = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), id)
-                .stream()
-                .findAny()
-                .orElseThrow(() -> new NotFoundException("Film not found"));
-
+                "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id WHERE film_id = ?";
+        Film film = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), id).stream()
+                .findAny().orElseThrow(() -> new NotFoundException("Film not found"));
+        film.setGenres(genreStorage.findAllGenresByFilm(film.getId()));
         Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(Collections.singletonList(id));
         film.setDirectors(directorsByFilm.getOrDefault(id, new HashSet<>()));
-
         return film;
     }
 
@@ -169,6 +164,7 @@ public class FilmDbStorage implements FilmStorage {
             sql = String.format(sql, "");
             films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
         }
+        setFilmGenres(films);
         addDirectorsToFilms(films);
         return films;
     }
@@ -239,5 +235,15 @@ public class FilmDbStorage implements FilmStorage {
         for (Film film : films) {
             film.setDirectors(directorsByFilm.getOrDefault(film.getId(), new HashSet<>()));
         }
+    }
+
+    private Collection<Film> setFilmGenres(Collection<Film> films) {
+        Map<Long, List<Genre>> filmGenresMap = genreStorage.findAllGenresForFilmCollection(films);
+        films.forEach(film -> {
+            Long filmId = film.getId();
+            film.setGenres(filmGenresMap.getOrDefault(filmId, new ArrayList<>()));
+        });
+
+        return films;
     }
 }
