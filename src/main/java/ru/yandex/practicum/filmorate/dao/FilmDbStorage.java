@@ -21,8 +21,10 @@ import ru.yandex.practicum.filmorate.storage.rating.RatingStorage;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Component("filmDbStorage")
@@ -44,7 +46,7 @@ public class FilmDbStorage implements FilmStorage {
     public Collection<Film> findAll() {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
                 "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum));
+        return setFilmGenres(jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum)));
     }
 
     @Override
@@ -95,8 +97,10 @@ public class FilmDbStorage implements FilmStorage {
     public Film getFilmById(Long id) {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
                 "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id WHERE film_id = ?";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), id).stream()
+        Film film = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), id).stream()
                 .findAny().orElseThrow(() -> new NotFoundException("Film not found"));
+        film.setGenres(genreStorage.findAllGenresByFilm(film.getId()));
+        return film;
     }
 
     public Collection<Film> getPopularFilms(Integer count, Integer genreId, Integer year) {
@@ -108,16 +112,16 @@ public class FilmDbStorage implements FilmStorage {
                 "LIMIT ?";
         if (Objects.nonNull(year) && Objects.nonNull(genreId)) {
             sql = String.format(sql, "LEFT JOIN films_Genres AS fg ON f.film_id = fg.film_id WHERE fg.genre_id = ? AND YEAR(f.release_date) = ?");
-            return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), genreId, year, count);
+            return setFilmGenres(jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), genreId, year, count));
         } else if (Objects.nonNull(genreId)) {
             sql = String.format(sql, "LEFT JOIN films_Genres AS fg ON f.film_id = fg.film_id WHERE fg.genre_id = ?");
-            return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), genreId, count);
+            return setFilmGenres(jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), genreId, count));
         } else if (Objects.nonNull(year)) {
             sql = String.format(sql, "WHERE YEAR(f.release_date) = ?");
-            return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), year, count);
+            return setFilmGenres(jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), year, count));
         } else {
             sql = String.format(sql, "");
-            return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
+            return setFilmGenres(jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count));
         }
     }
 
@@ -175,5 +179,15 @@ public class FilmDbStorage implements FilmStorage {
 
         log.warn("Жанр с id = {} не найден", genre_id);
         throw new ValidationException("Incorrect genre_id = " + genre_id + ".");
+    }
+
+    private Collection<Film> setFilmGenres(Collection<Film> films) {
+        Map<Long, List<Genre>> filmGenresMap = genreStorage.findAllGenresForFilmCollection(films);
+        films.forEach(film -> {
+            Long filmId = film.getId();
+            film.setGenres(filmGenresMap.getOrDefault(filmId, new ArrayList<>()));
+        });
+
+        return films;
     }
 }
