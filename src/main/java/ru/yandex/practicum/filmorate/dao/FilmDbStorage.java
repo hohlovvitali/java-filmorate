@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mappers.FilmMapper;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
@@ -170,7 +171,7 @@ public class FilmDbStorage implements FilmStorage {
                 "f.film_id IN (SELECT film_id FROM films_Likes WHERE user_id = ?) " +
                 "GROUP BY f.film_id " +
                 "ORDER BY COUNT(films_Likes.film_id) DESC;";
-        Collection<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs,rowNum), userId, friendId);
+        Collection<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), userId, friendId);
         return setFilmGenres(films);
     }
 
