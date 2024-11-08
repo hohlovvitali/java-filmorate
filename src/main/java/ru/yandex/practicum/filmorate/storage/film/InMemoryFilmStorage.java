@@ -145,6 +145,11 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
+    public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
+        return Collections.emptyList();
+    }
+
+    @Override
     public Collection<Film> getPopularFilms(Integer count) {
         if (count <= 0) {
             log.warn("Количество выводимых фильмов должно быть больше 0: {}", count);

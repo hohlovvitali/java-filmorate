@@ -10,6 +10,7 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 
 import java.util.Collection;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -60,10 +61,9 @@ public class FilmController {
         return filmService.getFilmById(id);
     }
 
-    @DeleteMapping("/{filmId}")
-    @ResponseStatus(HttpStatus.OK)
-    public void deleteFilmById(@PathVariable("filmId") Long filmId) {
-        filmService.deleteFilmById(filmId);
+    @GetMapping("/director/{directorId}")
+    public List<Film> getFilmsByDirector(@PathVariable Long directorId, @RequestParam String sortBy) {
+        return filmService.getFilmsByDirector(directorId, sortBy);
     }
 
 }

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mappers.FilmMapper;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
+import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Rating;
@@ -22,6 +23,7 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component("filmDbStorage")
 public class FilmDbStorage implements FilmStorage {
@@ -29,20 +31,26 @@ public class FilmDbStorage implements FilmStorage {
     private final JdbcTemplate jdbcTemplate;
     private final RatingStorage ratingStorage;
     private final GenreStorage genreStorage;
+    private final DirectorDbStorage directorDbStorage;
     private static final Logger log = LoggerFactory.getLogger(FilmStorage.class);
 
     @Autowired
-    public FilmDbStorage(JdbcTemplate jdbcTemplate, RatingStorage ratingStorage, GenreStorage genreStorage) {
+    public FilmDbStorage(JdbcTemplate jdbcTemplate, RatingStorage ratingStorage, GenreStorage genreStorage, DirectorDbStorage directorDbStorage) {
         this.jdbcTemplate = jdbcTemplate;
         this.genreStorage = genreStorage;
         this.ratingStorage = ratingStorage;
+        this.directorDbStorage = directorDbStorage;
     }
 
     @Override
     public Collection<Film> findAll() {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
                 "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum));
+        // Добавлен вывод режиссеров
+        List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum));
+        addDirectorsToFilms(films);
+
+        return films;
     }
 
     @Override
@@ -82,7 +90,8 @@ public class FilmDbStorage implements FilmStorage {
                 film.getMpa().getId(), id);
 
         updateGenres(film.getGenres(), id);
-        return film;
+        directorDbStorage.updateDirectorsForFilm(film);
+        return getFilmById(id);
     }
 
     @Override
@@ -94,9 +103,49 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public Film getFilmById(Long id) {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
-                "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id WHERE film_id = ?";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), id).stream()
-                .findAny().orElseThrow(() -> new NotFoundException("Film not found"));
+                "FROM films AS f " +
+                "JOIN ratings AS r ON f.rating_id = r.rating_id " +
+                "WHERE f.film_id = ?";
+
+        Film film = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), id)
+                .stream()
+                .findAny()
+                .orElseThrow(() -> new NotFoundException("Film not found"));
+
+        Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(Collections.singletonList(id));
+        film.setDirectors(directorsByFilm.getOrDefault(id, new HashSet<>()));
+
+        return film;
+    }
+
+    @Override
+    public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name, " +
+                        "COUNT(l.user_id) AS likes " +
+                        "FROM films f " +
+                        "INNER JOIN film_director fd ON f.film_id = fd.film_id " +
+                        "INNER JOIN ratings r ON f.rating_id = r.rating_id " +
+                        "LEFT JOIN films_Likes l ON f.film_id = l.film_id " +
+                        "WHERE fd.director_id = ? " +
+                        "GROUP BY f.film_id, r.rating_name "
+        );
+
+        if ("likes".equals(sortBy)) {
+            sql.append(" ORDER BY likes DESC");
+        } else if ("year".equals(sortBy)) {
+            sql.append(" ORDER BY f.release_date");
+        }
+
+        List<Film> films = jdbcTemplate.query(sql.toString(), new FilmMapper(), directorId);
+
+        List<Long> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
+        Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(filmIds);
+
+        for (Film film : films) {
+            film.setDirectors(directorsByFilm.getOrDefault(film.getId(), new HashSet<>()));
+        }
+        return films;
     }
 
     public Collection<Film> getPopularFilms(Integer count) {
@@ -106,7 +155,11 @@ public class FilmDbStorage implements FilmStorage {
                 "GROUP BY f.film_id " +
                 "ORDER BY COUNT(films_Likes.film_id) DESC " +
                 "LIMIT ?";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
+        // Добавлен вывод режиссеров
+        List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
+        addDirectorsToFilms(films);
+
+        return films;
     }
 
     private void updateGenres(List<Genre> genres, Long id) {
@@ -163,5 +216,17 @@ public class FilmDbStorage implements FilmStorage {
 
         log.warn("Жанр с id = {} не найден", genre_id);
         throw new ValidationException("Incorrect genre_id = " + genre_id + ".");
+    }
+
+    private void addDirectorsToFilms(List<Film> films) {
+        if (films.isEmpty()) {
+            return;
+        }
+        List<Long> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
+        Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(filmIds);
+
+        for (Film film : films) {
+            film.setDirectors(directorsByFilm.getOrDefault(film.getId(), new HashSet<>()));
+        }
     }
 }
