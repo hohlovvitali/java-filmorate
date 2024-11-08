@@ -13,7 +13,6 @@ import ru.yandex.practicum.filmorate.model.Film;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Component
 @Qualifier("InMemoryFilmStorage")
@@ -145,21 +144,9 @@ public class InMemoryFilmStorage implements FilmStorage {
         return films.get(id);
     }
 
-
     @Override
     public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
-        List<Film> filmsByDirector = films.values().stream()
-                .filter(film -> film.getDirectors().stream()
-                        .anyMatch(director -> director.getId().equals(directorId) || director.getName().equalsIgnoreCase(sortBy)))
-                .collect(Collectors.toList());
-
-        if ("likes".equalsIgnoreCase(sortBy)) {
-            filmsByDirector.sort(Comparator.comparingInt((Film film) -> film.getUserLikesIdSet().size()).reversed());
-        } else if ("year".equalsIgnoreCase(sortBy)) {
-            filmsByDirector.sort(Comparator.comparing(Film::getReleaseDate));
-        }
-
-        return filmsByDirector;
+        return Collections.emptyList();
     }
 
     @Override

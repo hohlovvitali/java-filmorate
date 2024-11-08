@@ -1,15 +1,11 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.service.DirectorService;
 
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+
 
 @RestController
 @RequestMapping("/directors")
@@ -27,15 +23,8 @@ public class DirectorController {
     }
 
     @PutMapping
-    public ResponseEntity<?> updateDirector(@RequestBody Director director) {
-        try {
-            Director updatedDirector = directorService.updateDirector(director);
-            return ResponseEntity.ok(updatedDirector);
-        } catch (NotFoundException e) {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-        }
+    public Director updateDirector(@RequestBody Director director) {
+        return directorService.updateDirector(director);
     }
 
     @DeleteMapping("/{id}")
@@ -44,15 +33,8 @@ public class DirectorController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getDirectorById(@PathVariable Long id) {
-        try {
-            Director director = directorService.getDirectorById(id);
-            return ResponseEntity.ok(director);
-        } catch (NotFoundException e) {
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-        }
+    public Director getDirectorById(@PathVariable Long id) {
+        return directorService.getDirectorById(id);
     }
 
     @GetMapping

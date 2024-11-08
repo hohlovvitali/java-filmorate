@@ -9,7 +9,6 @@ import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
-import ru.yandex.practicum.filmorate.mappers.DirectorMapper;
 import ru.yandex.practicum.filmorate.mappers.FilmMapper;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Director;
@@ -24,6 +23,7 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component("filmDbStorage")
 public class FilmDbStorage implements FilmStorage {
@@ -31,20 +31,26 @@ public class FilmDbStorage implements FilmStorage {
     private final JdbcTemplate jdbcTemplate;
     private final RatingStorage ratingStorage;
     private final GenreStorage genreStorage;
+    private final DirectorDbStorage directorDbStorage;
     private static final Logger log = LoggerFactory.getLogger(FilmStorage.class);
 
     @Autowired
-    public FilmDbStorage(JdbcTemplate jdbcTemplate, RatingStorage ratingStorage, GenreStorage genreStorage) {
+    public FilmDbStorage(JdbcTemplate jdbcTemplate, RatingStorage ratingStorage, GenreStorage genreStorage, DirectorDbStorage directorDbStorage) {
         this.jdbcTemplate = jdbcTemplate;
         this.genreStorage = genreStorage;
         this.ratingStorage = ratingStorage;
+        this.directorDbStorage = directorDbStorage;
     }
 
     @Override
     public Collection<Film> findAll() {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
                 "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum));
+        // Добавлен вывод режиссеров
+        List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum));
+        addDirectorsToFilms(films);
+
+        return films;
     }
 
     @Override
@@ -84,7 +90,7 @@ public class FilmDbStorage implements FilmStorage {
                 film.getMpa().getId(), id);
 
         updateGenres(film.getGenres(), id);
-        directorParamsUpdate(film);
+        directorDbStorage.updateDirectorsForFilm(film);
         return getFilmById(id);
     }
 
@@ -101,22 +107,14 @@ public class FilmDbStorage implements FilmStorage {
                 "JOIN ratings AS r ON f.rating_id = r.rating_id " +
                 "WHERE f.film_id = ?";
 
-        Film film = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), id).stream()
-                .findAny().orElseThrow(() -> new NotFoundException("Film not found"));
+        Film film = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), id)
+                .stream()
+                .findAny()
+                .orElseThrow(() -> new NotFoundException("Film not found"));
 
-        String directorSql = "SELECT d.director_id, d.name FROM directors AS d " +
-                "JOIN film_director AS fd ON d.director_id = fd.director_id " +
-                "WHERE fd.film_id = ?";
+        Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(Collections.singletonList(id));
+        film.setDirectors(directorsByFilm.getOrDefault(id, new HashSet<>()));
 
-        List<Director> directors = jdbcTemplate.query(directorSql, (rs, rowNum) ->
-                        Director.builder()
-                                .id(rs.getLong("director_id"))
-                                .name(rs.getString("name"))
-                                .build(),
-                id
-        );
-
-        film.setDirectors(new HashSet<>(directors));
         return film;
     }
 
@@ -141,19 +139,13 @@ public class FilmDbStorage implements FilmStorage {
 
         List<Film> films = jdbcTemplate.query(sql.toString(), new FilmMapper(), directorId);
 
+        List<Long> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
+        Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(filmIds);
+
         for (Film film : films) {
-            List<Director> directors = getDirectorsForFilm(film.getId());
-            film.setDirectors(new HashSet<>(directors));
+            film.setDirectors(directorsByFilm.getOrDefault(film.getId(), new HashSet<>()));
         }
-
         return films;
-    }
-
-    private List<Director> getDirectorsForFilm(Long filmId) {
-        String sql = "SELECT d.* FROM directors d " +
-                "JOIN film_director fd ON d.director_id = fd.director_id " +
-                "WHERE fd.film_id = ?";
-        return jdbcTemplate.query(sql, new DirectorMapper(), filmId);
     }
 
     public Collection<Film> getPopularFilms(Integer count) {
@@ -163,7 +155,11 @@ public class FilmDbStorage implements FilmStorage {
                 "GROUP BY f.film_id " +
                 "ORDER BY COUNT(films_Likes.film_id) DESC " +
                 "LIMIT ?";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
+        // Добавлен вывод режиссеров
+        List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
+        addDirectorsToFilms(films);
+
+        return films;
     }
 
     private void updateGenres(List<Genre> genres, Long id) {
@@ -222,18 +218,15 @@ public class FilmDbStorage implements FilmStorage {
         throw new ValidationException("Incorrect genre_id = " + genre_id + ".");
     }
 
-    private void directorParamsUpdate(Film film) {
-        // Удаляем все записи для данного фильма, независимо от того, есть ли режиссеры.
-        String deleteSql = "DELETE FROM film_director WHERE film_id = ?";
-        jdbcTemplate.update(deleteSql, film.getId());
+    private void addDirectorsToFilms(List<Film> films) {
+        if (films.isEmpty()) {
+            return;
+        }
+        List<Long> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
+        Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(filmIds);
 
-        // Если у фильма есть режиссеры, добавляем их.
-        if (film.getDirectors() != null && !film.getDirectors().isEmpty()) {
-            String insertSql = "INSERT INTO film_director (film_id, director_id) VALUES (?, ?)";
-            List<Object[]> params = film.getDirectors().stream()
-                    .map(director -> new Object[]{film.getId(), director.getId()})
-                    .toList();
-            jdbcTemplate.batchUpdate(insertSql, params);
+        for (Film film : films) {
+            film.setDirectors(directorsByFilm.getOrDefault(film.getId(), new HashSet<>()));
         }
     }
 }

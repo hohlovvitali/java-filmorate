@@ -11,12 +11,17 @@ import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ServerErrorException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @RestControllerAdvice
 public class ErrorHandler {
     @ExceptionHandler
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public NotFoundException handleNotFoundException(final NotFoundException e) {
-        return new NotFoundException(e.getMessage());
+    public Map<String, String> handleNotFoundException(final NotFoundException e) {
+        Map<String, String> errorResponse = new HashMap<>();
+        errorResponse.put("error", e.getMessage());
+        return errorResponse;
     }
 
     @ExceptionHandler
