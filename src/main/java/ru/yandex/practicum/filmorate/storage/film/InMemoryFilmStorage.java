@@ -160,6 +160,11 @@ public class InMemoryFilmStorage implements FilmStorage {
 
     }
 
+    @Override
+    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
+        return null;
+    }
+
     public void addLikeToFilm(Long filmId, Long userId) {
         checkFilmById(filmId);
         this.getFilmById(filmId).addLike(userId);

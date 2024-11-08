@@ -12,7 +12,7 @@ import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
 import ru.yandex.practicum.filmorate.storage.like.LikeStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
-import java.util.*;
+import java.util.Collection;
 
 @Service
 public class FilmService {
@@ -85,5 +85,10 @@ public class FilmService {
     public void deleteFilmById(Long filmId) {
         log.trace("Удаление фильма id={}", filmId);
         filmStorage.deleteFilmById(filmId);
+    }
+
+    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
+        log.info("Вывод общих фильмов пользователя {} и пользователя {}", userId, friendId);
+        return filmStorage.getCommonFilms(userId, friendId);
     }
 }
