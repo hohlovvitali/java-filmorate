@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dao.ReviewDbStorage;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.model.EventOperation;
+import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.GradeReview;
 import ru.yandex.practicum.filmorate.model.Review;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
@@ -20,21 +22,25 @@ public class ReviewService {
     private final ReviewDbStorage reviewDbStorage;
     private final UserStorage userStorage;
     private final FilmStorage filmStorage;
+    private final EventService eventService;
     private static final String gradeLike = "Like";
     private static final String gradeDislike = "Dislike";
 
     public ReviewService(@Qualifier("userDbStorage") UserStorage userStorage, ReviewDbStorage reviewDbStorage,
-                         @Qualifier("filmDbStorage") FilmStorage filmStorage) {
+                         @Qualifier("filmDbStorage") FilmStorage filmStorage, EventService eventService) {
         this.reviewDbStorage = reviewDbStorage;
         this.userStorage = userStorage;
         this.filmStorage = filmStorage;
+        this.eventService = eventService;
     }
 
     public Review create(Review review) {
         log.info("Создаем новый отзыв");
         filmStorage.getFilmById(review.getFilmId());
         userStorage.getUserById(review.getUserId());
-        return reviewDbStorage.create(review);
+        Review newReview = reviewDbStorage.create(review);
+        eventService.addEvent(EventType.REVIEW, EventOperation.ADD, newReview.getUserId(), newReview.getReviewId());
+        return newReview;
     }
 
     public Review getReviewById(Long id) {
@@ -53,15 +59,19 @@ public class ReviewService {
         log.info("Обновляем отзыв");
         Review rev = validationForUpdate(review);
         review.setUseful(rev.getUseful());
-        return reviewDbStorage.update(review);
+        Review updateReview = reviewDbStorage.update(review);
+        eventService.addEvent(EventType.REVIEW, EventOperation.UPDATE, updateReview.getUserId(), updateReview.getReviewId());
+        return updateReview;
     }
 
     public void deleteReview(Long id) {
         log.info("Удаляем отзыв");
-        if (!reviewDbStorage.deleteReview(id)) {
+        Review deletedReview = reviewDbStorage.getReviewById(id).orElseThrow(() -> {
             log.warn("Отзыва с id = " + id + " не существует");
-            throw new NotFoundException("Отзыв с id = " + id + " не найден");
-        }
+            return new NotFoundException("Отзыв с id = " + id + " не найден");
+        });
+        reviewDbStorage.deleteReview(id);
+        eventService.addEvent(EventType.REVIEW, EventOperation.REMOVE, deletedReview.getUserId(), deletedReview.getReviewId());
     }
 
     public List<Review> getAllReviews(Long filmId, int count) {
