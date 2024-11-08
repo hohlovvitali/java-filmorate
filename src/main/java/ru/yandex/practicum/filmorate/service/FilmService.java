@@ -98,4 +98,9 @@ public class FilmService {
         log.info("Получение фильмов режиссера с id = {} и сортировкой по {}", directorId, sortBy);
         return filmStorage.getFilmsByDirector(directorId, sortBy);
     }
+
+    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
+        log.info("Вывод общих фильмов пользователя {} и пользователя {}", userId, friendId);
+        return filmStorage.getCommonFilms(userId, friendId);
+    }
 }
