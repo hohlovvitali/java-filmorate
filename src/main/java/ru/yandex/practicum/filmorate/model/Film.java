@@ -33,6 +33,7 @@ public class Film {
     private List<Genre> genres = new ArrayList<>();
     @NotNull
     private Rating mpa;
+    private Set<Director> directors = new HashSet<>();
 
     public void addLike(Long id) {
         this.userLikesIdSet.add(id);

@@ -82,8 +82,8 @@ public class FilmService {
         return filmStorage.getPopularFilms(count);
     }
 
-    public void deleteFilmById(Long filmId) {
-        log.trace("Удаление фильма id={}", filmId);
-        filmStorage.deleteFilmById(filmId);
+    public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
+        log.info("Получение фильмов режиссера с id = {} и сортировкой по {}", directorId, sortBy);
+        return filmStorage.getFilmsByDirector(directorId, sortBy);
     }
 }
