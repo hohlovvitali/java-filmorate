@@ -2,10 +2,8 @@ package ru.yandex.practicum.filmorate.controller;
 
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
 
@@ -16,6 +14,12 @@ import java.util.Collection;
 @RequestMapping("/users")
 public class UserController {
     private final UserService userService;
+
+    @GetMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    public User getUserById(@PathVariable("id") Long id) {
+        return userService.getUserById(id);
+    }
 
     @GetMapping
     @ResponseStatus(HttpStatus.OK)
@@ -57,5 +61,11 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     public void deleteFriend(@PathVariable("id") Long userId, @PathVariable("friendId") Long friendId) {
         userService.deleteFriend(userId, friendId);
+    }
+
+    @DeleteMapping("/{userId}")
+    @ResponseStatus(HttpStatus.OK)
+    public void deleteUserById(@PathVariable("userId") Long userId) {
+        userService.deleteUserById(userId);
     }
 }
