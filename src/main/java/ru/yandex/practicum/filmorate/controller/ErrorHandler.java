@@ -1,6 +1,8 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -34,4 +36,15 @@ public class ErrorHandler {
     public ServerErrorException handleServerErrorException(final ServerErrorException e) {
         return new ServerErrorException(e.getMessage());
     }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ValidationException handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
+        FieldError fieldError = ex.getBindingResult().getFieldError();
+        if (fieldError != null) {
+            return new ValidationException(fieldError.getDefaultMessage());
+        }
+        return new ValidationException("Validation failed");
+    }
+
 }

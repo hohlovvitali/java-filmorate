@@ -223,19 +223,17 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     private void directorParamsUpdate(Film film) {
-        if (film.getDirectors() != null && !film.getDirectors().isEmpty()) {
-            String querySql = "DELETE FROM film_director WHERE film_id = ?";
-            jdbcTemplate.update(querySql, film.getId());
+        // Удаляем все записи для данного фильма, независимо от того, есть ли режиссеры.
+        String deleteSql = "DELETE FROM film_director WHERE film_id = ?";
+        jdbcTemplate.update(deleteSql, film.getId());
 
-            String insertDirectorQuery = "INSERT INTO film_director (film_id, director_id) VALUES (?, ?)";
-            List<Object[]> directorParams = new ArrayList<>();
-            for (Director director : film.getDirectors()) {
-                directorParams.add(new Object[]{film.getId(), director.getId()});
-            }
-            jdbcTemplate.batchUpdate(insertDirectorQuery, directorParams);
-        } else {
-            String querySql = "DELETE FROM film_director WHERE film_id = ?";
-            jdbcTemplate.update(querySql, film.getId());
+        // Если у фильма есть режиссеры, добавляем их.
+        if (film.getDirectors() != null && !film.getDirectors().isEmpty()) {
+            String insertSql = "INSERT INTO film_director (film_id, director_id) VALUES (?, ?)";
+            List<Object[]> params = film.getDirectors().stream()
+                    .map(director -> new Object[]{film.getId(), director.getId()})
+                    .toList();
+            jdbcTemplate.batchUpdate(insertSql, params);
         }
     }
 }
