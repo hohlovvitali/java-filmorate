@@ -109,6 +109,18 @@ public class FilmDbStorage implements FilmStorage {
         return jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
     }
 
+    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
+                "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id " +
+                "LEFT JOIN films_Likes ON f.film_id = films_Likes.film_id " +
+                "WHERE f.film_id IN (SELECT film_id FROM films_Likes WHERE user_id = ? GROUP BY film_id) AND " +
+                "f.film_id IN (SELECT film_id FROM films_Likes WHERE user_id = ?) " +
+                "GROUP BY f.film_id " +
+                "ORDER BY COUNT(films_Likes.film_id) DESC;";
+        Collection<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs,rowNum), userId, friendId);
+        return setFilmGenres(films);
+    }
+
     private void updateGenres(List<Genre> genres, Long id) {
         if (genres == null) {
             return;
@@ -163,5 +175,15 @@ public class FilmDbStorage implements FilmStorage {
 
         log.warn("Жанр с id = {} не найден", genre_id);
         throw new ValidationException("Incorrect genre_id = " + genre_id + ".");
+    }
+
+    private Collection<Film> setFilmGenres(Collection<Film> films) {
+        Map<Long, List<Genre>> filmGenresMap = genreStorage.findAllGenresForFilmCollection(films);
+        films.forEach(film -> {
+            Long filmId = film.getId();
+            film.setGenres(filmGenresMap.getOrDefault(filmId, new ArrayList<>()));
+        });
+
+        return films;
     }
 }
