@@ -18,4 +18,6 @@ public interface FilmStorage {
 
     Collection<Film> getPopularFilms(Integer count);
 
+    Collection<Film> getCommonFilms(Long userId, Long friendId);
+
 }

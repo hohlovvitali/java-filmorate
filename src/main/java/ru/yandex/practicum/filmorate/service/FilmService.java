@@ -86,4 +86,9 @@ public class FilmService {
         log.trace("Удаление фильма id={}", filmId);
         filmStorage.deleteFilmById(filmId);
     }
+
+    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
+        log.info("Вывод общих фильмов пользователя {} и пользователя {}", userId, friendId);
+        return filmStorage.getCommonFilms(userId, friendId);
+    }
 }
