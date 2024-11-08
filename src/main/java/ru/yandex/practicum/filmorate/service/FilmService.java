@@ -91,4 +91,9 @@ public class FilmService {
         log.info("Вывод общих фильмов пользователя {} и пользователя {}", userId, friendId);
         return filmStorage.getCommonFilms(userId, friendId);
     }
+
+    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
+        log.info("Вывод общих фильмов пользователя {} и пользователя {}", userId, friendId);
+        return filmStorage.getCommonFilms(userId, friendId);
+    }
 }
