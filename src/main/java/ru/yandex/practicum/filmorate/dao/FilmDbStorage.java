@@ -8,9 +8,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mappers.FilmMapper;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Director;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -22,8 +22,14 @@ import ru.yandex.practicum.filmorate.storage.rating.RatingStorage;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 @Component("filmDbStorage")
 public class FilmDbStorage implements FilmStorage {
@@ -48,6 +54,7 @@ public class FilmDbStorage implements FilmStorage {
                 "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id";
         // Добавлен вывод режиссеров
         List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum));
+        setFilmGenres(films);
         addDirectorsToFilms(films);
 
         return films;
@@ -103,18 +110,12 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public Film getFilmById(Long id) {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
-                "FROM films AS f " +
-                "JOIN ratings AS r ON f.rating_id = r.rating_id " +
-                "WHERE f.film_id = ?";
-
-        Film film = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), id)
-                .stream()
-                .findAny()
-                .orElseThrow(() -> new NotFoundException("Film not found"));
-
+                "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id WHERE film_id = ?";
+        Film film = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), id).stream()
+                .findAny().orElseThrow(() -> new NotFoundException("Film not found"));
+        film.setGenres(genreStorage.findAllGenresByFilm(film.getId()));
         Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(Collections.singletonList(id));
         film.setDirectors(directorsByFilm.getOrDefault(id, new HashSet<>()));
-
         return film;
     }
 
@@ -139,26 +140,39 @@ public class FilmDbStorage implements FilmStorage {
 
         List<Film> films = jdbcTemplate.query(sql.toString(), new FilmMapper(), directorId);
 
-        List<Long> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
+        List<Long> filmIds = films.stream().map(Film::getId).toList();
         Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(filmIds);
 
         for (Film film : films) {
             film.setDirectors(directorsByFilm.getOrDefault(film.getId(), new HashSet<>()));
         }
+        setFilmGenres(films);
         return films;
     }
 
-    public Collection<Film> getPopularFilms(Integer count) {
-        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
+    public Collection<Film> getPopularFilms(Integer count, Integer genreId, Integer year) {
+        String sql = "SELECT f.*, r.rating_name " +
                 "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id " +
-                "LEFT JOIN films_Likes ON f.film_id = films_Likes.film_id " +
+                "LEFT JOIN films_Likes AS fl ON f.film_id = fl.film_id %s" +
                 "GROUP BY f.film_id " +
-                "ORDER BY COUNT(films_Likes.film_id) DESC " +
+                "ORDER BY COUNT(fl.film_id) DESC " +
                 "LIMIT ?";
-        // Добавлен вывод режиссеров
-        List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
+        List<Film> films = null;
+        if (Objects.nonNull(year) && Objects.nonNull(genreId)) {
+            sql = String.format(sql, "LEFT JOIN films_Genres AS fg ON f.film_id = fg.film_id WHERE fg.genre_id = ? AND YEAR(f.release_date) = ?");
+            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), genreId, year, count);
+        } else if (Objects.nonNull(genreId)) {
+            sql = String.format(sql, "LEFT JOIN films_Genres AS fg ON f.film_id = fg.film_id WHERE fg.genre_id = ?");
+            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), genreId, count);
+        } else if (Objects.nonNull(year)) {
+            sql = String.format(sql, "WHERE YEAR(f.release_date) = ?");
+            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), year, count);
+        } else {
+            sql = String.format(sql, "");
+            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
+        }
+        setFilmGenres(films);
         addDirectorsToFilms(films);
-
         return films;
     }
 
@@ -222,11 +236,21 @@ public class FilmDbStorage implements FilmStorage {
         if (films.isEmpty()) {
             return;
         }
-        List<Long> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
+        List<Long> filmIds = films.stream().map(Film::getId).toList();
         Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(filmIds);
 
         for (Film film : films) {
             film.setDirectors(directorsByFilm.getOrDefault(film.getId(), new HashSet<>()));
         }
+    }
+
+    private Collection<Film> setFilmGenres(Collection<Film> films) {
+        Map<Long, List<Genre>> filmGenresMap = genreStorage.findAllGenresForFilmCollection(films);
+        films.forEach(film -> {
+            Long filmId = film.getId();
+            film.setGenres(filmGenresMap.getOrDefault(filmId, new ArrayList<>()));
+        });
+
+        return films;
     }
 }
