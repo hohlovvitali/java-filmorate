@@ -22,7 +22,14 @@ import ru.yandex.practicum.filmorate.storage.rating.RatingStorage;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 @Component("filmDbStorage")
 public class FilmDbStorage implements FilmStorage {
@@ -133,12 +140,13 @@ public class FilmDbStorage implements FilmStorage {
 
         List<Film> films = jdbcTemplate.query(sql.toString(), new FilmMapper(), directorId);
 
-        List<Long> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
+        List<Long> filmIds = films.stream().map(Film::getId).toList();
         Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(filmIds);
 
         for (Film film : films) {
             film.setDirectors(directorsByFilm.getOrDefault(film.getId(), new HashSet<>()));
         }
+        setFilmGenres(films);
         return films;
     }
 
@@ -228,7 +236,7 @@ public class FilmDbStorage implements FilmStorage {
         if (films.isEmpty()) {
             return;
         }
-        List<Long> filmIds = films.stream().map(Film::getId).collect(Collectors.toList());
+        List<Long> filmIds = films.stream().map(Film::getId).toList();
         Map<Long, Set<Director>> directorsByFilm = directorDbStorage.getDirectorsForFilms(filmIds);
 
         for (Film film : films) {
