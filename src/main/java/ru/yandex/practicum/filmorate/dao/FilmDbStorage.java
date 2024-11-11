@@ -22,14 +22,7 @@ import ru.yandex.practicum.filmorate.storage.rating.RatingStorage;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Component("filmDbStorage")
 public class FilmDbStorage implements FilmStorage {
@@ -174,6 +167,18 @@ public class FilmDbStorage implements FilmStorage {
         setFilmGenres(films);
         addDirectorsToFilms(films);
         return films;
+    }
+
+    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
+        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
+                "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id " +
+                "LEFT JOIN films_Likes ON f.film_id = films_Likes.film_id " +
+                "WHERE f.film_id IN (SELECT film_id FROM films_Likes WHERE user_id = ? GROUP BY film_id) AND " +
+                "f.film_id IN (SELECT film_id FROM films_Likes WHERE user_id = ?) " +
+                "GROUP BY f.film_id " +
+                "ORDER BY COUNT(films_Likes.film_id) DESC;";
+        Collection<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), userId, friendId);
+        return setFilmGenres(films);
     }
 
     private void updateGenres(List<Genre> genres, Long id) {
