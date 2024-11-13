@@ -75,16 +75,4 @@ public class FilmController {
     public List<Film> getFilmsByDirector(@PathVariable Long directorId, @RequestParam String sortBy) {
         return filmService.getFilmsByDirector(directorId, sortBy);
     }
-
-    @GetMapping("/search")
-    @ResponseStatus(HttpStatus.OK)
-    public List<Film> searchFilms(@RequestParam String query, @RequestParam List<String> by) {
-        return filmService.search(query, by);
-    }
-
-    @GetMapping("/common")
-    @ResponseStatus(HttpStatus.OK)
-    public Collection<Film> getCommonFilms(@RequestParam Long userId, @RequestParam Long friendId) {
-        return filmService.getCommonFilms(userId, friendId);
-    }
 }
