@@ -72,44 +72,4 @@ public class RecommendationService {
 
         return filmsId.stream().map(filmStorage::getFilmById).collect(Collectors.toSet());
     }
-
-//    public Set<Film> getRecommendationFilms(Long userId) {
-//        log.info("Получение рекомендаций для пользователся с id = {}", userId);
-//        Map<Long, List<Long>> usersFilms = new HashMap<>();
-//
-//        List<User> userList = (List<User>) userStorage.findAll();
-//
-//        for (User user : userList) {
-//            usersFilms.put(user.getId(), filmStorage.getFilmsIdByUserId(user.getId()));
-//        }
-//
-//        long maxMatches = 0;
-//        Set<Long> similar = new HashSet<>();
-//
-//        for (Long id : usersFilms.keySet()) {
-//            if (Objects.equals(id, userId)) continue;
-//
-//            long numberOfMatches = usersFilms.get(userId).stream()
-//                    .filter(filmId -> usersFilms.get(userId).contains(filmId)).count();
-//
-//            if (numberOfMatches == maxMatches & numberOfMatches != 0) {
-//                similar.add(id);
-//            }
-//
-//            if (numberOfMatches > maxMatches) {
-//                maxMatches = numberOfMatches;
-//                similar = new HashSet<>();
-//                similar.add(id);
-//            }
-//        }
-//
-//        if (maxMatches == 0) {
-//            return new HashSet<>();
-//        }
-//
-//        return similar.stream().flatMap(id -> filmStorage.getFilmsIdByUserId(id).stream())
-//                .filter(filmId -> !usersFilms.get(userId).contains(filmId))
-//                .map(filmStorage::getFilmById)
-//                .collect(Collectors.toSet());
-//    }
 }
