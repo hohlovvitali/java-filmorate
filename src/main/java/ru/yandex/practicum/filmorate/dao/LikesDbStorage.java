@@ -34,7 +34,7 @@ public class LikesDbStorage implements LikeStorage {
         try {
             userStorage.getUserById(userId);
             filmStorage.getFilmById(id);
-        } catch (NotFoundException e){
+        } catch (NotFoundException e) {
             throw new NotFoundException("Объект не найден");
         }
 
