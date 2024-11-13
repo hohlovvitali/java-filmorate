@@ -13,14 +13,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.filmorate.model.Event;
-import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.EventService;
-import ru.yandex.practicum.filmorate.service.RecommendationService;
 import ru.yandex.practicum.filmorate.service.UserService;
 
 import java.util.Collection;
-import java.util.Set;
 
 @RestController()
 @AllArgsConstructor
@@ -28,7 +25,6 @@ import java.util.Set;
 public class UserController {
     private final UserService userService;
     private final EventService eventService;
-    private final RecommendationService recommendationService;
 
     @GetMapping("/{id}")
     @ResponseStatus(HttpStatus.OK)
@@ -88,11 +84,5 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     public Collection<Event> getFeed(@PathVariable("id") Long userId) {
         return eventService.findByUserId(userId);
-    }
-
-    @GetMapping("/{id}/recommendations")
-    @ResponseStatus(HttpStatus.OK)
-    public Set<Film> getRecommendations(@PathVariable("id") Long userId) {
-        return recommendationService.getRecommendationFilms(userId);
     }
 }

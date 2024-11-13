@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.EventOperation;
 import ru.yandex.practicum.filmorate.model.EventType;
@@ -23,7 +24,7 @@ public class FilmService {
     private final LikeStorage likeStorage;
     private final GenreStorage genreStorage;
     private final EventService eventService;
-    private static final Logger log = LoggerFactory.getLogger(FilmService.class);
+    private static final Logger log = LoggerFactory.getLogger(FilmController.class);
 
     public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
                        @Qualifier("userDbStorage") UserStorage userStorage,
