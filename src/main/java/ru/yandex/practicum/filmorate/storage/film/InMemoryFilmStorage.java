@@ -150,6 +150,11 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
+    public List<Long> getFilmsIdByUserId(Long userId) {
+        return List.of();
+    }
+
+    @Override
     public Collection<Film> getPopularFilms(Integer count, Integer genreId, Integer year) {
         if (count <= 0) {
             log.warn("Количество выводимых фильмов должно быть больше 0: {}", count);

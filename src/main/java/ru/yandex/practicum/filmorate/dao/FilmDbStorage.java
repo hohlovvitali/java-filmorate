@@ -176,6 +176,13 @@ public class FilmDbStorage implements FilmStorage {
         return films;
     }
 
+    @Override
+    public List<Long> getFilmsIdByUserId(Long userId) {
+        String sql = "SELECT film_id FROM films_Likes WHERE user_id = ?";
+        return jdbcTemplate.query(sql, (rs, rowNum) -> rs.getLong("film_id"), userId);
+    }
+
+
     private void updateGenres(List<Genre> genres, Long id) {
         if (genres == null) {
             return;
