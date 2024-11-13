@@ -80,6 +80,7 @@ public class FilmService {
 
         userStorage.getUserById(userId);
 
+
         likeStorage.removeLike(filmId, userId);
         eventService.addEvent(EventType.LIKE, EventOperation.REMOVE, userId, filmId);
     }
