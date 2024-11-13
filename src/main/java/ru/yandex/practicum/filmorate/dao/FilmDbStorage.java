@@ -22,7 +22,14 @@ import ru.yandex.practicum.filmorate.storage.rating.RatingStorage;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 @Component("filmDbStorage")
 public class FilmDbStorage implements FilmStorage {
@@ -45,6 +52,7 @@ public class FilmDbStorage implements FilmStorage {
     public Collection<Film> findAll() {
         String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
                 "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id";
+        // Добавлен вывод режиссеров
         List<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum));
         setFilmGenres(films);
         addDirectorsToFilms(films);
@@ -69,7 +77,6 @@ public class FilmDbStorage implements FilmStorage {
                 }, keyHolder);
         film.setId(Objects.requireNonNull(keyHolder.getKey()).longValue());
         updateGenres(film.getGenres(), film.getId());
-        directorDbStorage.updateDirectorsForFilm(film);
         return film;
     }
 
@@ -163,43 +170,6 @@ public class FilmDbStorage implements FilmStorage {
         } else {
             sql = String.format(sql, "");
             films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), count);
-        }
-        setFilmGenres(films);
-        addDirectorsToFilms(films);
-        return films;
-    }
-
-    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
-        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
-                "FROM films AS f JOIN ratings AS r ON f.rating_id=r.rating_id " +
-                "LEFT JOIN films_Likes ON f.film_id = films_Likes.film_id " +
-                "WHERE f.film_id IN (SELECT film_id FROM films_Likes WHERE user_id = ? GROUP BY film_id) AND " +
-                "f.film_id IN (SELECT film_id FROM films_Likes WHERE user_id = ?) " +
-                "GROUP BY f.film_id " +
-                "ORDER BY COUNT(films_Likes.film_id) DESC;";
-        Collection<Film> films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), userId, friendId);
-        return setFilmGenres(films);
-    }
-
-    @Override
-    public List<Film> searchFilms(String query, boolean isDirector, boolean isTitle) {
-        String sql = "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name " +
-                "FROM films AS f JOIN ratings AS r ON f.rating_id = r.rating_id " +
-                "LEFT JOIN films_Likes AS fl ON f.film_id = fl.film_id %s" +
-                "GROUP BY f.film_id ORDER BY COUNT(fl.film_id) DESC";
-        List<Film> films = null;
-        if (isDirector && isTitle) {
-            sql = String.format(sql, "LEFT JOIN film_director fd ON f.film_id = fd.film_id LEFT JOIN directors AS d " +
-                    "ON fd.director_id = d.director_id  WHERE (d.name ILIKE CONCAT('%', ?, '%')) OR " +
-                    "(f.name ILIKE CONCAT('%', ?, '%'))");
-            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), query, query);
-        } else if (isTitle) {
-            sql = String.format(sql, "WHERE f.name ILIKE CONCAT('%', ?, '%')");
-            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), query);
-        } else if (isDirector) {
-            sql = String.format(sql, "INNER JOIN film_director fd ON f.film_id = fd.film_id LEFT JOIN directors AS d " +
-                    "ON fd.director_id = d.director_id WHERE d.name ILIKE CONCAT('%', ?, '%')");
-            films = jdbcTemplate.query(sql, (rs, rowNum) -> new FilmMapper().mapRow(rs, rowNum), query);
         }
         setFilmGenres(films);
         addDirectorsToFilms(films);

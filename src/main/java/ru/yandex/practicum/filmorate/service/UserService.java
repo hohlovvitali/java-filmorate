@@ -20,7 +20,7 @@ public class UserService {
     private final UserStorage userStorage;
     private final FriendStorage friendStorage;
     private final EventService eventService;
-    private static final Logger log = LoggerFactory.getLogger(FilmController.class);
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     public UserService(@Qualifier("userDbStorage") UserStorage userStorage, FriendStorage friendStorage,EventService eventService) {
         this.userStorage = userStorage;

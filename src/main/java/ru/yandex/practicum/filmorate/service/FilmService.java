@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.controller.FilmController;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.EventOperation;
 import ru.yandex.practicum.filmorate.model.EventType;
@@ -98,38 +97,5 @@ public class FilmService {
     public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
         log.info("Получение фильмов режиссера с id = {} и сортировкой по {}", directorId, sortBy);
         return filmStorage.getFilmsByDirector(directorId, sortBy);
-    }
-
-    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
-        log.info("Вывод общих фильмов пользователя {} и пользователя {}", userId, friendId);
-        return filmStorage.getCommonFilms(userId, friendId);
-    }
-
-
-    public List<Film> search(String query, List<String> by) {
-        log.info("Поиск фильмов c подстрокой " + query);
-        if (query == null || query.isEmpty()) {
-            log.warn("Текст для поиска не может быть null или пустым");
-            throw new ValidationException("Не указан текст для посика");
-        }
-        if (by.size() == 1) {
-            if (by.getFirst().equals("director")) {
-                log.trace("Осуществляем поиск по режиссеру");
-                return filmStorage.searchFilms(query, true, false);
-            }
-            if (by.getFirst().equals("title")) {
-                log.trace("Осуществляем поиск по названию");
-                return filmStorage.searchFilms(query, false, true);
-            }
-            log.warn("Поиск может осуществляться только по названию или по режиссеру");
-            throw new NotFoundException("Неизвестное значение параметра поиска. Ввидите director для поиска по" +
-                    " режиссеру, title для поиска по названию или оба значения через запятую для посика одновременно " +
-                    "и по режиссеру и по названию");
-        }
-        if (by.size() == 2 && by.contains("director") && by.contains("title")) {
-            log.trace("Осуществляем поиск по названию и по режиссеру одновременно");
-            return filmStorage.searchFilms(query, true, true);
-        }
-        throw new ValidationException("Неверный формат параметров поска");
     }
 }
