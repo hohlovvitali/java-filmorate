@@ -114,6 +114,7 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
+        directorDbStorage.getById(directorId);
         StringBuilder sql = new StringBuilder(
                 "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.rating_id, r.rating_name, " +
                         "COUNT(l.user_id) AS likes " +

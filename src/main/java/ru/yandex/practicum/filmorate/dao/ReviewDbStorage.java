@@ -28,8 +28,7 @@ public class ReviewDbStorage {
     private final GradeReviewMapper mapperGrade;
     private static final String INSERT_QUERY = "INSERT INTO reviews(content, type, user_id, film_id," +
             " usefulness_rating) VALUES(?, ?, ?, ?, 0);";
-    private static final String UPDATE_QUERY = "UPDATE reviews SET content = ?, type = ?, user_id = ?, film_id = ? " +
-            " WHERE id = ?";
+    private static final String UPDATE_QUERY = "UPDATE reviews SET content = ?, type = ? WHERE id = ?";
     private static final String FIND_REVIEW_BY_ID_QUERY = "SELECT id, content, type, user_id, film_id, " +
             " usefulness_rating FROM reviews WHERE id = ?";
     private static final String FIND_ALL_REVIEWS_QUERY = "SELECT id, content, type, user_id, film_id, usefulness_rating " +
@@ -75,11 +74,11 @@ public class ReviewDbStorage {
     public Review update(Review review) {
         try {
             int rowsUpdated = jdbc.update(UPDATE_QUERY, review.getContent(), Review.getStringType(review.getIsPositive()),
-                    review.getUserId(), review.getFilmId(), review.getReviewId());
+                    review.getReviewId());
             if (rowsUpdated == 0) {
                 throw new ServerErrorException("Не удалось обновить данные");
             }
-            return review;
+            return getReviewById(review.getReviewId()).get();
         } catch (DuplicateKeyException exp) {
             throw new DuplicatedDataException("Пользователь с id = " + review.getUserId() + " уже оставил отзыв к " +
                     "фильму с id = " + review.getFilmId());

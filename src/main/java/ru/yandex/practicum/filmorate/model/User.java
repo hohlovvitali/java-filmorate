@@ -32,4 +32,11 @@ public class User {
     public void addFriend(Long id) {
         this.friendsIdSet.add(id);
     }
+
+    public String getName() {
+        if (name == null || name.isEmpty()) {
+            return login;
+        }
+        return name;
+    }
 }

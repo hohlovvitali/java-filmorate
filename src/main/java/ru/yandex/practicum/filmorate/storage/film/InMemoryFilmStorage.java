@@ -19,7 +19,7 @@ import java.util.*;
 public class InMemoryFilmStorage implements FilmStorage {
     private final Map<Long, Film> films = new HashMap<>();
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private static LocalDate RELEASE_DATE_MIN = LocalDate.parse("1895-12-28");
+    private static final LocalDate RELEASE_DATE_MIN = LocalDate.parse("1895-12-28");
     private static final Logger log = LoggerFactory.getLogger(FilmController.class);
     private final Comparator<Film> filmComparator = (film1, film2) -> {
         if (film1.getUserLikesIdSet().size() != film2.getUserLikesIdSet().size()) {
