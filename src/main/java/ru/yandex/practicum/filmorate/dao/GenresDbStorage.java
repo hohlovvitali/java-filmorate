@@ -47,8 +47,8 @@ public class GenresDbStorage implements GenreStorage {
 
     @Override
     public Map<Long, List<Genre>> findAllGenresForFilmCollection(Collection<Film> films) {
-        final String sql = "select fg.film_id as film_id, g.id as genre_id, g.name as name from films_Genres fg " +
-                "left join genres g on fg.genre_id = g.id where fg.film_id in (%s)";
+        String sql = "SELECT fg.film_id AS film_id, g.id AS genre_id, g.name AS name from films_Genres fg " +
+                "LEFT JOIN genres g on fg.genre_id = g.id WHERE fg.film_id IN (%s)";
 
         Map<Long, List<Genre>> filmGenresMap = new HashMap<>();
         Collection<String> ids = films.stream().map(film -> String.valueOf(film.getId())).toList();

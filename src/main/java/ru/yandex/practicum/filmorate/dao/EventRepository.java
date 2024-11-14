@@ -14,7 +14,7 @@ public class EventRepository {
     private final JdbcTemplate jdbcTemplate;
 
     public Collection<Event> findByUserId(Long userId) {
-        final String sql = "select * from events where user_id = ?";
+        String sql = "SELECT * FROM events WHERE user_id = ?";
         return jdbcTemplate.query(sql, new EventMapper(), userId);
     }
 
