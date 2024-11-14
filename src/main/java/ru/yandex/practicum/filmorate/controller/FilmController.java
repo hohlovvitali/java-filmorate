@@ -90,4 +90,10 @@ public class FilmController {
     public Collection<Film> getCommonFilms(@RequestParam Long userId, @RequestParam Long friendId) {
         return filmService.getCommonFilms(userId, friendId);
     }
+
+    @DeleteMapping("/{filmId}")
+    @ResponseStatus(HttpStatus.OK)
+    public void deleteFilmById(@PathVariable("filmId") Long filmId) {
+        filmService.deleteFilmById(filmId);
+    }
 }

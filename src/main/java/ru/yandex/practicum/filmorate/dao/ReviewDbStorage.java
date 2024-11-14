@@ -78,7 +78,7 @@ public class ReviewDbStorage {
             if (rowsUpdated == 0) {
                 throw new ServerErrorException("Не удалось обновить данные");
             }
-            return review;
+            return getReviewById(review.getReviewId()).get();
         } catch (DuplicateKeyException exp) {
             throw new DuplicatedDataException("Пользователь с id = " + review.getUserId() + " уже оставил отзыв к " +
                     "фильму с id = " + review.getFilmId());
