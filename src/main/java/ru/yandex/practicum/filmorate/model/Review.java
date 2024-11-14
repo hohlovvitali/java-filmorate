@@ -8,7 +8,6 @@ import lombok.Data;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 
 
-
 @Data
 @Builder
 public class Review {
