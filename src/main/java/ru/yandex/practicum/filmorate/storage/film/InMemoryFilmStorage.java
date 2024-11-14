@@ -150,6 +150,11 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
+    public List<Film> searchFilms(String query, boolean director, boolean title) {
+        return Collections.emptyList();
+    }
+
+    @Override
     public Collection<Film> getPopularFilms(Integer count, Integer genreId, Integer year) {
         if (count <= 0) {
             log.warn("Количество выводимых фильмов должно быть больше 0: {}", count);
@@ -163,6 +168,11 @@ public class InMemoryFilmStorage implements FilmStorage {
 
         return this.findAll().stream().sorted(filmComparator).limit(count).toList();
 
+    }
+
+    @Override
+    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
+        return null;
     }
 
     public void addLikeToFilm(Long filmId, Long userId) {
