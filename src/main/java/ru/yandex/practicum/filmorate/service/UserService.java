@@ -4,8 +4,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.filmorate.controller.FilmController;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
+import ru.yandex.practicum.filmorate.model.EventOperation;
+import ru.yandex.practicum.filmorate.model.EventType;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.friend.FriendStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
@@ -17,11 +18,13 @@ public class UserService {
 
     private final UserStorage userStorage;
     private final FriendStorage friendStorage;
-    private static final Logger log = LoggerFactory.getLogger(FilmController.class);
+    private final EventService eventService;
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
-    public UserService(@Qualifier("userDbStorage") UserStorage userStorage, FriendStorage friendStorage) {
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage, FriendStorage friendStorage,EventService eventService) {
         this.userStorage = userStorage;
         this.friendStorage = friendStorage;
+        this.eventService = eventService;
     }
 
     public Collection<User> findAll() {
@@ -50,6 +53,7 @@ public class UserService {
         checkUserId(userId);
         checkUserId(friendId);
         friendStorage.addFriend(userId, friendId);
+        eventService.addEvent(EventType.FRIEND, EventOperation.ADD,userId, friendId);
     }
 
     public void deleteFriend(Long userId, Long friendId) {
@@ -57,11 +61,18 @@ public class UserService {
         checkUserId(userId);
         checkUserId(friendId);
         friendStorage.removeFriend(userId, friendId);
+        eventService.addEvent(EventType.FRIEND, EventOperation.REMOVE,userId, friendId);
     }
 
-    public void deleteUser(Long id) {
-        log.info("Удаление пользователем с id={}", id);
-        userStorage.delete(id);
+    public User getUserById(Long userId) {
+        log.info("Вывод пользователя c id={}", userId);
+        return userStorage.getUserById(userId);
+    }
+
+    public void deleteUserById(Long userId) {
+        log.info("Удаление пользователя с id={} ", userId);
+        checkUserId(userId);
+        userStorage.deleteUserById(userId);
     }
 
     public Collection<User> getCommonFriends(Long userId, Long otherId) {

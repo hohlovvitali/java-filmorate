@@ -19,7 +19,7 @@ import java.util.*;
 public class InMemoryFilmStorage implements FilmStorage {
     private final Map<Long, Film> films = new HashMap<>();
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private static LocalDate RELEASE_DATE_MIN = LocalDate.parse("1895-12-28");
+    private static final LocalDate RELEASE_DATE_MIN = LocalDate.parse("1895-12-28");
     private static final Logger log = LoggerFactory.getLogger(FilmController.class);
     private final Comparator<Film> filmComparator = (film1, film2) -> {
         if (film1.getUserLikesIdSet().size() != film2.getUserLikesIdSet().size()) {
@@ -133,7 +133,7 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public void delete(Long id) {
+    public void deleteFilmById(Long id) {
         checkFilmById(id);
         films.remove(id);
     }
@@ -145,7 +145,17 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public Collection<Film> getPopularFilms(Integer count) {
+    public List<Film> getFilmsByDirector(Long directorId, String sortBy) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<Film> searchFilms(String query, boolean director, boolean title) {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public Collection<Film> getPopularFilms(Integer count, Integer genreId, Integer year) {
         if (count <= 0) {
             log.warn("Количество выводимых фильмов должно быть больше 0: {}", count);
             throw new ValidationException("Количество выводимых фильмов должно быть больше 0");
@@ -158,6 +168,11 @@ public class InMemoryFilmStorage implements FilmStorage {
 
         return this.findAll().stream().sorted(filmComparator).limit(count).toList();
 
+    }
+
+    @Override
+    public Collection<Film> getCommonFilms(Long userId, Long friendId) {
+        return null;
     }
 
     public void addLikeToFilm(Long filmId, Long userId) {

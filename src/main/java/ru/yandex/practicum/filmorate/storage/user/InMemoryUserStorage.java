@@ -81,7 +81,7 @@ public class InMemoryUserStorage implements UserStorage {
     }
 
     @Override
-    public void delete(Long userId) {
+    public void deleteUserById(Long userId) {
         checkUserById(userId);
 
         users.remove(userId);
